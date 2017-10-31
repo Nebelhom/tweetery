@@ -83,6 +83,33 @@ class TweetDownloader(object):
 
         return results
 
+    def download_all_tweets(self, feed):
+        auth = OAuthHandler(self.ckey, self.csecret)
+        auth.set_access_token(self.atoken, self.asecret)
+        api = API(auth)
+
+        # from
+        # https://stackoverflow.com/questions/45867934/is-it-possible-to-download-tweets-and-retweets-of-10000-users-with-tweepy-throug
+        alltweets = []
+        new_tweets = api.user_timeline(screen_name = feed, count=200) 
+
+        # save most recent tweets
+        alltweets.extend(new_tweets)
+
+        # save the id of the oldest tweet less one
+        oldest = alltweets[-1].id - 1
+
+        #keep grabbing tweets until there are no tweets left to grab
+        #while new_tweets:       
+        #    try:
+        #        new_tweets = api.user_timeline(screen_name = feed,count=200,max_id=oldest)
+        #    except tweepy.TweepError:
+        #        time.sleep(60 * 15)
+        #        continue
+
+        return alltweets
+
 if __name__ == '__main__':
     tw = TweetDownloader()
-    print(tw.feeds)
+    tweets = tw.download_all_tweets(tw.feeds[0])
+    print(tweets[0])
