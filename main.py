@@ -16,16 +16,14 @@ At the very end search large twitter space to look for fitting tweets across who
 
 
 TODO:
-Access the twitter feeds
-
-Write the tweets to csv... or sql
+Write the tweets to csv (DONE nearly)... or sql
 
 read them out from sql again
 
 """
 
 
-class TweetDownloader(object):
+class TweetCollector(object):
     """
     Class written to download tweets from all feeds specified and then save them in a csv file... or sql (make it sql for fun)
 
@@ -160,22 +158,10 @@ class TweetDownloader(object):
 
 
 if __name__ == '__main__':
-    tw = TweetDownloader()
+    tw = TweetCollector()
     for feed, since_id in tw.feeds:
         if since_id == '-1':
             tweets = tw.download(feed)
         else:
             tweets = tw.download(feed, since_id=since_id)
         tw.toCSV(tweets, feed)
-    #print(dir(tweets[0]))
-    #print('\n')
-    print(len(tweets))
-    #print('\n')
-    #for status in tweets:
-        #print(status, '\n')
-        #print('Tweet: ', status.text, '\n')
-        #print('Author: ', type(status.user), '\n')
-        #print('JSON\n')
-        #for item in status._json:
-        #    print(item, '\n')
-        #print('========================\n\n')
