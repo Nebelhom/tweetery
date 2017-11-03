@@ -2,8 +2,11 @@
 
 import csv
 import time
+import numpy as np
+import pandas as pd
+# Keys may otherwise not be properly displayed
+pd.set_option("display.max_colwidth",999)
 import tweepy
-#from tweepy import OAuthHandler, API
 
 """
 Purpose: Download tweets from interesting feeds. classify them into interesting and not interesting
@@ -13,13 +16,6 @@ Use this to train a natural language model to classify future tweets.
 Later try to classify automatically into separate categories
 
 At the very end search large twitter space to look for fitting tweets across whole space with trained model
-
-
-TODO:
-Write the tweets to csv (DONE nearly)... or sql
-
-read them out from sql again
-
 """
 
 
@@ -31,85 +27,64 @@ class TweetCollector(object):
     twitter_feed | Tweet | Date | Interesting? (Used to train classifier) | (Optional) Keywords automatically added
     """
 
-
     def __init__(self, _feedfile='feeds.csv', _keyfile='keys.csv'):
-        key_dict = self.read_keys(_keyfile)
 
-        self.ckey = key_dict['ckey']
-        self.csecret = key_dict['csecret']
-        self.atoken = key_dict['atoken']
-        self.asecret = key_dict['asecret']
+        kd = pd.read_csv(_keyfile)
+        self.ckey = kd[kd['key']=='ckey']['value'].to_string(index=False)
+        self.csecret = kd[kd['key']=='csecret']['value'].to_string(index=False)
+        self.atoken =  kd[kd['key']=='atoken']['value'].to_string(index=False)
+        self.asecret =  kd[kd['key']=='asecret']['value'].to_string(index=False)
 
-        self.feeds = self.read_feeds(_feedfile)
+        self.feeds = pd.read_csv(_feedfile)
 
-
-    def read_feeds(self, fname):
+    def download(self, feed, since_id, count=200, exclude_replies=True, include_rtf=True):
         """
-        reads the user_names for the feeds from CSV file and returns list
+        Download tweets using tweepery.
 
-        Argument:
-        fname : String : Path to file
+        Arguments:
+        feed - string - username on twitter; here comes from self.feeds dataframe
+        count=200 - integer - max. 200
+        since_id=None - None or string of integer
+        exclude_replies=True
+        - see # https://developer.twitter.com/en/docs/tweets/timelines/guides/working-with-timelines
+        include_rtf=True
+        - see # https://developer.twitter.com/en/docs/tweets/timelines/guides/working-with-timelines
 
         Returns:
-        results : list
+        df_tweets - pandas.DataFrame - columns=['since_id','created_at','tweet']
         """
-        results = []
-        with open(fname, 'r') as f:
-            reader = csv.reader(f)
-            for feed, since_id in reader:
-                results.append((feed, since_id))
 
-        return results
-
-    def read_keys(self, fname):
-        """
-        reads the keys from CSV file and returns dictionary
-
-        Argument:
-        fname : String : Path to file
-
-        Returns:
-        results : dict : key -> value
-        """
-        keys = []
-        with open(fname, 'r') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                keys.append(row)
-
-        results = {}
-        for key, value in keys:
-            results[key] = value
-
-        return results
-
-    def download(self, feed, count=200, since_id=None, exclude_replies=True, include_rtf=True):
         auth = tweepy.OAuthHandler(self.ckey, self.csecret)
         auth.set_access_token(self.atoken, self.asecret)
         api = tweepy.API(auth)
 
-        # https://developer.twitter.com/en/docs/tweets/timelines/guides/working-with-timelines
-        # Use as reference
-
         # from
         # https://gist.github.com/yanofsky/5436496
-        # and
-        # https://stackoverflow.com/questions/45867934/is-it-possible-to-download-tweets-and-retweets-of-10000-users-with-tweepy-throug
+
         alltweets = []
-        if since_id:
+
+        if since_id == -1:
+            new_tweets = api.user_timeline(screen_name=feed, count=count,
+                exclude_replies=exclude_replies, include_rtf=include_rtf)
+        else:
             new_tweets = api.user_timeline(screen_name=feed, count=count,
                 since_id=since_id, exclude_replies=exclude_replies,
                 include_rtf=include_rtf)
-        else:
-            new_tweets = api.user_timeline(screen_name=feed, count=count,
-                exclude_replies=exclude_replies, include_rtf=include_rtf)
 
         # save most recent tweets
         alltweets.extend(new_tweets)
 
-        return alltweets
+        #transform the tweepy tweets into a 2D array that will populate the csv 
+        outtweets = [[tweet.id_str, tweet.created_at, tweet.text.encode("utf-8"), feed] for tweet in alltweets]
+
+        df_tweets = pd.DataFrame(data=outtweets, columns=['since_id', 'created_at', 'tweet', 'feed'])
+
+        return df_tweets
 
     def download_all(self, feed, exclude_replies=True, include_rtf=True):
+        """
+        Does not quite work yet...
+        """
         auth = tweepy.OAuthHandler(self.ckey, self.csecret)
         auth.set_access_token(self.atoken, self.asecret)
         api = tweepy.API(auth)
@@ -129,39 +104,38 @@ class TweetCollector(object):
         oldest = alltweets[-1].id - 1
 
         # keep grabbing tweets until there are no tweets left to grab
-        while len(new_tweets) > 0:
+        while new_tweets:
+            print(new_tweets[0].text.encode("utf-8"))
             print("getting tweets before {}".format(oldest))
             
             #all subsiquent requests use the max_id param to prevent duplicates
             new_tweets = api.user_timeline(screen_name=feed, count=200,
-            exclude_replies=exclude_replies, include_rtf=include_rtf)
+            exclude_replies=exclude_replies, include_rtf=include_rtf,  max_id=oldest)
             
             #save most recent tweets
             alltweets.extend(new_tweets)
             
             #update the id of the oldest tweet less one
-            oldest = alltweets[-1].id - 1
+            oldest = alltweets[0].id - 1
             
             print ("...{} tweets downloaded so far".format(len(alltweets)))
 
-        return alltweets
-
-    def toCSV(self, tweets, feed):
         #transform the tweepy tweets into a 2D array that will populate the csv 
-        outtweets = [[tweet.id_str, tweet.created_at, tweet.text.encode("utf-8")] for tweet in tweets]
-        
-        #write the csv  
-        with open('{}_tweets.csv'.format(feed), 'w') as f:
-            writer = csv.writer(f)
-            writer.writerow(["id","created_at","text"])
-            writer.writerows(outtweets)
+        outtweets = [[tweet.id_str, tweet.created_at, tweet.text.encode("utf-8"), feed] for tweet in alltweets]
 
+        df_tweets = pd.DataFrame(data=outtweets, columns=['since_id', 'created_at', 'tweet', 'feed'])
+
+        return df_tweets
+
+    def to_CSV(self, tweets, csvname=''):
+        if csvname == '':
+            csvname = '{}_tweets.csv'.format(tweets['feed'][0])
+        tweets.to_csv(csvname, index=False)
 
 if __name__ == '__main__':
     tw = TweetCollector()
-    for feed, since_id in tw.feeds:
-        if since_id == '-1':
-            tweets = tw.download(feed)
-        else:
-            tweets = tw.download(feed, since_id=since_id)
-        tw.toCSV(tweets, feed)
+    #for feed, since_id in tw.feeds.values:
+    #    tweets = tw.download_all(feed, since_id)
+    #    tw.to_csv('test.csv', index=False)
+    tweets = tw.download_all('Nebelhom', -1)
+    tw.to_CSV(tweets)
