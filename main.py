@@ -132,6 +132,22 @@ class TweetCollector(object):
             csvname = '{}_tweets.csv'.format(tweets['feed'][0])
         tweets.to_csv(csvname, index=False)
 
+    def save_feeds(self, db, fname='feeds.csv'):
+        """
+        Saves a list of feeds and also the oldest since_id
+
+        Steps: identify all tweet feeds in db, find the oldest of each feed in that list
+        """
+        feeds = db['feed'].unique()
+        result = []
+        for f in feeds:
+            result.append([
+                f,
+                db[db['feed'] == f]['since_id'].max()
+                ])
+        new_feed = pd.DataFrame(data=result, columns=['feed', 'since_id'])
+        new_feed.to_csv(fname, index=False)
+
 if __name__ == '__main__':
     tw = TweetCollector()
     #for feed, since_id in tw.feeds.values:
@@ -139,3 +155,4 @@ if __name__ == '__main__':
     #    tw.to_csv('test.csv', index=False)
     tweets = tw.download_all('Nebelhom', -1)
     tw.to_CSV(tweets)
+    tw.save_feeds(tweets, fname='Neb_feeds.csv')
