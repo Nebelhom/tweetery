@@ -36,10 +36,23 @@ class TweetCollector(object):
         self.asecret =  kd[kd['key']=='asecret']['value'].to_string(index=False)
 
         self.feeds = pd.read_csv(_feedfile)
+        self.columns = ['since_id', 'created_at', 'tweet', 'feed']
 
-    def download(self, feed, since_id, count=200, exclude_replies=True, include_rtf=True):
+    def download(self):
         """
-        Download tweets using tweepery.
+        Download and accumulate tweets from multiple feeds
+        """
+        alltweets = []
+        for feed, since_id in self.feeds.values:
+            tweets = self._download(feed, since_id)
+            alltweets.append(tweets)
+
+        return pd.concat(alltweets)
+
+
+    def _download(self, feed, since_id, count=200, exclude_replies=True, include_rtf=True):
+        """
+        Download tweets using tweetery.
 
         Arguments:
         feed - string - username on twitter; here comes from self.feeds dataframe
@@ -77,11 +90,11 @@ class TweetCollector(object):
         #transform the tweepy tweets into a 2D array that will populate the csv 
         outtweets = [[tweet.id_str, tweet.created_at, tweet.text.encode("utf-8"), feed] for tweet in alltweets]
 
-        df_tweets = pd.DataFrame(data=outtweets, columns=['since_id', 'created_at', 'tweet', 'feed'])
+        df_tweets = pd.DataFrame(data=outtweets, columns=self.columns)
 
         return df_tweets
 
-    def download_all(self, feed, exclude_replies=True, include_rtf=True):
+    def _download_all(self, feed, exclude_replies=True, include_rtf=True):
         """
         Does not quite work yet...
         """
@@ -123,13 +136,24 @@ class TweetCollector(object):
         #transform the tweepy tweets into a 2D array that will populate the csv 
         outtweets = [[tweet.id_str, tweet.created_at, tweet.text.encode("utf-8"), feed] for tweet in alltweets]
 
-        df_tweets = pd.DataFrame(data=outtweets, columns=['since_id', 'created_at', 'tweet', 'feed'])
+        df_tweets = pd.DataFrame(data=outtweets, columns=self.columns)
 
         return df_tweets
 
+    def download_all(self):
+        """
+        Download and accumulate tweets from multiple feeds
+        """
+        alltweets = []
+        for feed, since_id in self.feeds.values:
+            tweets = self._download_all(feed, since_id)
+            alltweets.append(tweets)
+
+        return pd.concat(alltweets)
+
     def to_CSV(self, tweets, csvname=''):
         if csvname == '':
-            csvname = '{}_tweets.csv'.format(tweets['feed'][0])
+            csvname = 'Tweets.csv'
         tweets.to_csv(csvname, index=False)
 
     def save_feeds(self, db, fname='feeds.csv'):
@@ -150,9 +174,6 @@ class TweetCollector(object):
 
 if __name__ == '__main__':
     tw = TweetCollector()
-    #for feed, since_id in tw.feeds.values:
-    #    tweets = tw.download_all(feed, since_id)
-    #    tw.to_csv('test.csv', index=False)
-    tweets = tw.download_all('Nebelhom', -1)
+    tweets = tw.download()
     tw.to_CSV(tweets)
-    tw.save_feeds(tweets, fname='Neb_feeds.csv')
+    tw.save_feeds(tweets, fname='test_feeds.csv')
