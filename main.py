@@ -156,7 +156,19 @@ class TweetCollector(object):
             csvname = 'Tweets.csv'
         tweets.to_csv(csvname, index=False)
 
-    def save_feeds(self, db, fname='feeds.csv'):
+    def to_XLS(self, tweets, xlsname=''):
+        if xlsname == '':
+            xlsname = 'Tweets.xlsx'
+        # Create a Pandas Excel writer using XlsxWriter as the engine.
+        writer = pd.ExcelWriter(xlsname, engine='xlsxwriter')
+
+        # Convert the dataframe to an XlsxWriter Excel object.
+        tweets.to_excel(writer, sheet_name='Sheet1', index=False)
+
+        # Close the Pandas Excel writer and output the Excel file.
+        writer.save()
+
+    def save_feeds_csv(self, db, fname='feeds.csv'):
         """
         Saves a list of feeds and also the oldest since_id
 
@@ -176,4 +188,4 @@ if __name__ == '__main__':
     tw = TweetCollector()
     tweets = tw.download()
     tw.to_CSV(tweets)
-    tw.save_feeds(tweets, fname='test_feeds.csv')
+    tw.save_feeds_csv(tweets, fname='test_feeds.csv')
