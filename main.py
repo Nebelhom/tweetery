@@ -4,6 +4,10 @@ import csv
 import time
 import numpy as np
 import pandas as pd
+import string
+from nltk.corpus import stopwords
+
+
 # Keys may otherwise not be properly displayed
 pd.set_option("display.max_colwidth",999)
 import tweepy
@@ -17,6 +21,22 @@ Later try to classify automatically into separate categories
 
 At the very end search large twitter space to look for fitting tweets across whole space with trained model
 """
+
+def text_process(mess):
+    """
+    Takes in a string of text, then performs the following:
+    1. Remove all punctuation
+    2. Remove all stopwords
+    3. Returns a list of the cleaned text
+    """
+    # Check characters to see if they are in punctuation
+    nopunc = [char for char in mess if char not in string.punctuation]
+
+    # Join the characters again to form the string.
+    nopunc = ''.join(nopunc)
+    
+    # Now just remove any stopwords
+    return [word for word in nopunc.split() if word.lower() not in stopwords.words('english')]
 
 
 class TweetCollector(object):
@@ -88,7 +108,7 @@ class TweetCollector(object):
         alltweets.extend(new_tweets)
 
         #transform the tweepy tweets into a 2D array that will populate the csv 
-        outtweets = [[tweet.id_str, tweet.created_at, tweet.text.encode("utf-8"), feed] for tweet in alltweets]
+        outtweets = [[tweet.id_str, tweet.created_at, tweet.text, feed] for tweet in alltweets]
 
         df_tweets = pd.DataFrame(data=outtweets, columns=self.columns)
 
@@ -134,7 +154,7 @@ class TweetCollector(object):
             print ("...{} tweets downloaded so far".format(len(alltweets)))
 
         #transform the tweepy tweets into a 2D array that will populate the csv 
-        outtweets = [[tweet.id_str, tweet.created_at, tweet.text.encode("utf-8"), feed] for tweet in alltweets]
+        outtweets = [[tweet.id_str, tweet.created_at, tweet.text, feed] for tweet in alltweets]
 
         df_tweets = pd.DataFrame(data=outtweets, columns=self.columns)
 
@@ -184,8 +204,13 @@ class TweetCollector(object):
         new_feed = pd.DataFrame(data=result, columns=['feed', 'since_id'])
         new_feed.to_csv(fname, index=False)
 
+    def add_remove_punct(self, tweets):
+        tweets['tweet'] = tweets['tweet'].apply(text_process)
+
 if __name__ == '__main__':
     tw = TweetCollector()
     tweets = tw.download()
+    tweets['clean_tweet'] = tweets['tweet'].apply(text_process)
     tw.to_CSV(tweets)
+    tw.to_XLS(tweets)
     tw.save_feeds_csv(tweets, fname='test_feeds.csv')
