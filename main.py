@@ -38,6 +38,42 @@ def text_process(mess):
     # Now just remove any stopwords
     return [word for word in nopunc.split() if word.lower() not in stopwords.words('english')]
 
+def get_tweet_text_full_text_tuple(tweet):
+    #text = ""
+    full_text = ""
+
+    if "extended_tweet" in tweet._json and "full_text" in tweet._json["extended_tweet"]:
+        full_text = tweet._json["extended_tweet"]["full_text"]
+
+        if full_text[:2] == 'RT':
+            full_text = tweet._json['retweeted_status']['full_text']
+            #text = full_text
+
+        else:
+            if "display_text_range" in tweet._json["extended_tweet"]:
+                beginIndex = tweet._json["extended_tweet"]["display_text_range"][0]
+                endIndex   = tweet._json["extended_tweet"]["display_text_range"][1]
+                full_text = full_text[beginIndex:endIndex]
+
+    elif "full_text" in tweet._json:
+        full_text = tweet._json["full_text"]
+        if full_text[:2] == 'RT':
+            full_text = tweet._json['retweeted_status']['full_text']
+        
+        else:
+            if "display_text_range" in tweet._json:
+                beginIndex = tweet._json["display_text_range"][0]
+                endIndex   = tweet._json["display_text_range"][1]
+                full_text = full_text[beginIndex:endIndex]
+
+    elif "text" in tweet._json:
+        text = tweet._json["text"]
+        full_text = text
+    else:
+        text = tweet.text
+        full_text = text
+
+    return full_text
 
 class TweetCollector(object):
     """
@@ -47,15 +83,15 @@ class TweetCollector(object):
     twitter_feed | Tweet | Date | Interesting? (Used to train classifier) | (Optional) Keywords automatically added
     """
 
-    def __init__(self, _feedfile='feeds.csv', _keyfile='keys.csv'):
+    def __init__(self, feedfile='feeds.csv', keyfile='keys.csv'):
 
-        kd = pd.read_csv(_keyfile)
+        kd = pd.read_csv(keyfile)
         self.ckey = kd[kd['key']=='ckey']['value'].to_string(index=False)
         self.csecret = kd[kd['key']=='csecret']['value'].to_string(index=False)
         self.atoken =  kd[kd['key']=='atoken']['value'].to_string(index=False)
         self.asecret =  kd[kd['key']=='asecret']['value'].to_string(index=False)
 
-        self.feeds = pd.read_csv(_feedfile)
+        self.feeds = pd.read_csv(feedfile)
         self.columns = ['since_id', 'created_at', 'tweet', 'feed']
 
     def download(self):
@@ -98,17 +134,21 @@ class TweetCollector(object):
 
         if since_id == -1:
             new_tweets = api.user_timeline(screen_name=feed, count=count,
-                exclude_replies=exclude_replies, include_rtf=include_rtf)
+                exclude_replies=exclude_replies, include_rtf=include_rtf,
+                tweet_mode='extended')
         else:
             new_tweets = api.user_timeline(screen_name=feed, count=count,
                 since_id=since_id, exclude_replies=exclude_replies,
-                include_rtf=include_rtf)
+                include_rtf=include_rtf, tweet_mode='extended')
 
         # save most recent tweets
         alltweets.extend(new_tweets)
 
-        #transform the tweepy tweets into a 2D array that will populate the csv 
-        outtweets = [[tweet.id_str, tweet.created_at, tweet.text, feed] for tweet in alltweets]
+        #transform the tweepy tweets into a 2D array that will populate the csv
+
+        outtweets = [[tweet.id_str, tweet.created_at,
+                      get_tweet_text_full_text_tuple(tweet), feed]
+                     for tweet in alltweets]
 
         df_tweets = pd.DataFrame(data=outtweets, columns=self.columns)
 
@@ -208,7 +248,7 @@ class TweetCollector(object):
         tweets['tweet'] = tweets['tweet'].apply(text_process)
 
 if __name__ == '__main__':
-    tw = TweetCollector()
+    tw = TweetCollector(feedfile='feeds.csv')
     tweets = tw.download()
     tweets['clean_tweet'] = tweets['tweet'].apply(text_process)
     tw.to_CSV(tweets)
