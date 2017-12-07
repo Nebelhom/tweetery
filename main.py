@@ -42,29 +42,24 @@ def get_tweet_text_full_text_tuple(tweet):
     #text = ""
     full_text = ""
 
-    if "extended_tweet" in tweet._json and "full_text" in tweet._json["extended_tweet"]:
+    if 'retweeted_status' in tweet._json:
+        full_text = tweet._json['retweeted_status']['full_text']
+
+    elif "extended_tweet" in tweet._json and "full_text" in tweet._json["extended_tweet"]:
         full_text = tweet._json["extended_tweet"]["full_text"]
 
-        if full_text[:2] == 'RT':
-            full_text = tweet._json['retweeted_status']['full_text']
-            #text = full_text
-
-        else:
-            if "display_text_range" in tweet._json["extended_tweet"]:
-                beginIndex = tweet._json["extended_tweet"]["display_text_range"][0]
-                endIndex   = tweet._json["extended_tweet"]["display_text_range"][1]
-                full_text = full_text[beginIndex:endIndex]
+        if "display_text_range" in tweet._json["extended_tweet"]:
+            beginIndex = tweet._json["extended_tweet"]["display_text_range"][0]
+            endIndex   = tweet._json["extended_tweet"]["display_text_range"][1]
+            full_text = full_text[beginIndex:endIndex]
 
     elif "full_text" in tweet._json:
         full_text = tweet._json["full_text"]
-        if full_text[:2] == 'RT':
-            full_text = tweet._json['retweeted_status']['full_text']
-        
-        else:
-            if "display_text_range" in tweet._json:
-                beginIndex = tweet._json["display_text_range"][0]
-                endIndex   = tweet._json["display_text_range"][1]
-                full_text = full_text[beginIndex:endIndex]
+
+        if "display_text_range" in tweet._json:
+            beginIndex = tweet._json["display_text_range"][0]
+            endIndex   = tweet._json["display_text_range"][1]
+            full_text = full_text[beginIndex:endIndex]
 
     elif "text" in tweet._json:
         text = tweet._json["text"]
