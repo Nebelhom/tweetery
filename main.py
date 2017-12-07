@@ -190,7 +190,6 @@ class TweetCollector(object):
         Steps: identify all tweet feeds in db, find the oldest of each feed in that list
         """
         feeds = self.tweets['feed'].unique()
-        print(feeds, '\n')
         result = []
         for f in feeds:
             result.append([
@@ -201,8 +200,9 @@ class TweetCollector(object):
         new_feed.to_csv(fname, index=False)
 
 if __name__ == '__main__':
-    tw = TweetCollector(feedfile='feeds.csv')
-    tw.clean_tweet_col()
-    tw.to_CSV()
-    tw.to_XLS()
-    tw.save_feeds_csv(fname='test_feeds.csv')
+    tw = TweetCollector(feedfile='example_feeds.csv')
+    # Adds another column called clean_tweets
+    tw.clean_tweet_col(new_col='clean_tweets')
+    tw.to_CSV(csvname='example_tweets.csv')
+    tw.to_XLS(xlsname='example_tweets.xls')
+    tw.save_feeds_csv(fname='example_feeds.csv')
