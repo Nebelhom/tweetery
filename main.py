@@ -7,6 +7,9 @@ import pandas as pd
 import string
 from nltk.corpus import stopwords
 
+# https://pypi.python.org/pypi/emoji/
+import emoji
+
 
 # Keys may otherwise not be properly displayed
 pd.set_option("display.max_colwidth",999)
@@ -30,16 +33,22 @@ def text_process(mess):
     3. Returns a list of the cleaned text
     """
     # Check characters to see if they are in punctuation
-    nopunc = [char for char in mess if char not in string.punctuation]
+    nopunc = [char for char in mess if char not in string.punctuation + "–"]
+
+    # Check if char is an emoji
+    noemoji = [char for char in nopunc if char not in emoji.UNICODE_EMOJI.keys()]
 
     # Join the characters again to form the string.
-    nopunc = ''.join(nopunc)
-    
+    nopunc = ''.join(noemoji)
+
     # Now just remove any stopwords
-    return [word for word in nopunc.split() if word.lower() not in stopwords.words('english')]
+    return [word for word in nopunc.split() if word.lower() not in stopwords.words('english') if 'http' not in word.lower()]
 
 def get_tweet_text_full_text_tuple(tweet):
-    #text = ""
+    """
+    Finds full text of the tweet. No matter if normal length, extended or
+    retweeted.
+    """
     full_text = ""
 
     if 'retweeted_status' in tweet._json:
