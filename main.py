@@ -158,63 +158,6 @@ class TweetCollector(object):
 
         return df_tweets
 
-    def _download_all(self, feed, exclude_replies=True, include_rtf=True):
-        """
-        Does not quite work yet...
-        """
-        auth = tweepy.OAuthHandler(self.ckey, self.csecret)
-        auth.set_access_token(self.atoken, self.asecret)
-        api = tweepy.API(auth)
-
-        # from
-        # https://gist.github.com/yanofsky/5436496
-        # and
-        # https://stackoverflow.com/questions/45867934/is-it-possible-to-download-tweets-and-retweets-of-10000-users-with-tweepy-throug
-        alltweets = []
-        new_tweets = api.user_timeline(screen_name=feed, count=200,
-            exclude_replies=exclude_replies, include_rtf=include_rtf)
-
-        # save most recent tweets
-        alltweets.extend(new_tweets)
-
-        # save the id of the oldest tweet less one
-        oldest = alltweets[-1].id - 1
-
-        # keep grabbing tweets until there are no tweets left to grab
-        while new_tweets:
-            print(new_tweets[0].text.encode("utf-8"))
-            print("getting tweets before {}".format(oldest))
-            
-            #all subsiquent requests use the max_id param to prevent duplicates
-            new_tweets = api.user_timeline(screen_name=feed, count=200,
-            exclude_replies=exclude_replies, include_rtf=include_rtf,  max_id=oldest)
-            
-            #save most recent tweets
-            alltweets.extend(new_tweets)
-            
-            #update the id of the oldest tweet less one
-            oldest = alltweets[0].id - 1
-            
-            print ("...{} tweets downloaded so far".format(len(alltweets)))
-
-        #transform the tweepy tweets into a 2D array that will populate the csv 
-        outtweets = [[tweet.id_str, tweet.created_at, tweet.text, feed] for tweet in alltweets]
-
-        df_tweets = pd.DataFrame(data=outtweets, columns=self.columns)
-
-        return df_tweets
-
-    def download_all(self):
-        """
-        Download and accumulate tweets from multiple feeds
-        """
-        alltweets = []
-        for feed, since_id in self.feeds.values:
-            tweets = self._download_all(feed, since_id)
-            alltweets.append(tweets)
-
-        return pd.concat(alltweets)
-
     def to_CSV(self, tweets, csvname=''):
         if csvname == '':
             csvname = 'Tweets.csv'
