@@ -8,10 +8,6 @@ import os.path
 import string
 from nltk.corpus import stopwords
 
-# https://pypi.python.org/pypi/emoji/
-import emoji
-
-
 # Keys may otherwise not be properly displayed
 pd.set_option("display.max_colwidth",999)
 import tweepy
@@ -57,33 +53,6 @@ class TweetCollector(object):
             alltweets.append(tweets)
 
         return pd.concat(alltweets)
-
-    def clean_tweet_col(self, new_col="clean_tweet"):
-        """
-        Creates a new column in the pandas dataframe with
-        precursor to bag of words using text_process method
-        """
-        self.tweets[new_col] = self.tweets['tweet'].apply(self.text_process)
-
-    def text_process(self, mess):
-        """
-        Takes in a string of text, then performs the following:
-        1. Remove all punctuation
-        2. Remove all stopwords
-        3. Returns a list of the cleaned text
-        """
-        # Check characters to see if they are in punctuation
-        nopunc = [char for char in mess if char not in string.punctuation + "–"]
-
-        # Check if char is an emoji
-        noemoji = [char for char in nopunc if char not in emoji.UNICODE_EMOJI.keys()]
-
-        # Join the characters again to form the string.
-        nopunc = ''.join(noemoji)
-
-        # Now just remove any stopwords
-        return [word for word in nopunc.split() if word.lower() not in stopwords.words('english') if 'http' not in word.lower()]
-
 
     def _download(self, feed, since_id, count=200, exclude_replies=True, include_rtf=True):
         """
@@ -328,8 +297,6 @@ class TweetCollector(object):
 
 if __name__ == '__main__':
     tw = TweetCollector(feedfile='example_feeds.csv')
-    # Adds another column called clean_tweets
-    #tw.clean_tweet_col()
-    tw.to_CSV(csvname='bla', overwrite=True, extend_existing=True)
-    tw.to_XLS(xlsname='Competitor_Tweets', overwrite=True, extend_existing=True)
+    tw.to_CSV(csvname='example_tweets.csv', overwrite=True, extend_existing=True)
+    tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True, extend_existing=True)
     #tw.save_feeds_csv(fname='example_feeds.csv')
