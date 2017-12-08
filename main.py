@@ -281,8 +281,6 @@ class TweetCollector(object):
             print("Saving to {}".format(xlsname))
             self.save_xls(xlsname, self.tweets)
 
-        self.save_xls(xlsname, self.tweets)
-
     def get_tweet_full_text(self, tweet):
         """
         Finds full text of the tweet. No matter if normal length, extended or
@@ -329,10 +327,9 @@ class TweetCollector(object):
         self.feeds.to_csv(fname, index=False)
 
 if __name__ == '__main__':
-    #tw = TweetCollector(feedfile='example_feeds.csv')
-    tw = TweetCollector(feedfile='feeds_test.csv')
+    tw = TweetCollector(feedfile='example_feeds.csv')
     # Adds another column called clean_tweets
     #tw.clean_tweet_col()
-    #tw.to_CSV(csvname='bla', overwrite=True, extend_existing=True)
-    tw.to_XLS(xlsname='example_tweets1.xls', overwrite=True, extend_existing=True)
+    tw.to_CSV(csvname='bla', overwrite=True, extend_existing=True)
+    tw.to_XLS(xlsname='Competitor_Tweets', overwrite=True, extend_existing=True)
     #tw.save_feeds_csv(fname='example_feeds.csv')
