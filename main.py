@@ -4,6 +4,7 @@ import csv
 import time
 import numpy as np
 import pandas as pd
+import os.path
 import string
 from nltk.corpus import stopwords
 
@@ -132,22 +133,153 @@ class TweetCollector(object):
 
         return df_tweets
 
-    def to_CSV(self, csvname=''):
+    def check_ending(self, fname, ending):
+        """
+        Checks for correct ending.
+        """
+        fend = fname.split('.')[-1]
+        if fend.lower() != ending.lower():
+            return False
+        return True
+
+    def new_fname_if_need(self, fname):
+        """
+        Checks if file exists and proposes new fname if needed.
+
+        Relies on the fname having a .xxx ending
+        """
+        checking = True
+        i = 1
+        while checking:
+            if os.path.exists(fname):
+                new = fname.split('.')
+                new[-2] = new[-2] + str(i)
+                if os.path.exists('.'.join(new)):
+                    i += 1
+                else:
+                    return '.'.join(new)
+            else:
+                return fname
+
+    def to_CSV(self, csvname='', extend_existing=False, overwrite=False):
+        """
+        Writes self.tweets to CSV format.
+
+        Keyword arguments:
+        csvname         -- string -- path or filename of the CSV file.
+                        If it already exists, then append number until new
+                        filename created.
+        extend_existing -- Boolean -- If True, extends existing csv file
+        overwrite       -- Boolean -- If True, overwrites existing csv file
+                        extend_existing supersedes overwrite
+        """
+
         if csvname == '':
             csvname = 'Tweets.csv'
-        self.tweets.to_csv(csvname, index=False)
 
-    def to_XLS(self, xlsname=''):
-        if xlsname == '':
-            xlsname = 'Tweets.xlsx'
+        # Add file ending if left out
+        if not self.check_ending(csvname, 'csv'):
+            csvname = csvname + '.csv'
+
+        # Writes to a new file
+        if not overwrite and not extend_existing:
+            csvname = self.new_fname_if_need(csvname)
+            print("Saving to {}".format(csvname))
+            self.tweets.to_csv(csvname, index=False)
+
+        # Extends an existing file if valid path given
+        # Extend supersedes overwrite
+        elif extend_existing:
+            try:
+                old_tweets = pd.read_csv(csvname)
+                if old_tweets.columns.equals(self.tweets.columns):
+                    new_tweets = pd.concat([self.tweets, old_tweets])
+                    print('Extending tweets in {}...'.format(csvname))
+                    new_tweets.to_csv(csvname, index=False)
+                else:
+                    print('Files do not have the same DataFrame columns. '
+                          'Saving to different filename instead.')
+                    self.to_CSV(csvname)
+
+            except FileNotFoundError:
+                print('File could not be found. Creating new file with '
+                      'filename {}...'.format(csvname))
+                self.tweets.to_csv(csvname, index=False)
+            except:
+                raise
+
+        # Overwrites an existing file if needed
+        else:
+            print("Saving to {}".format(csvname))
+            self.tweets.to_csv(csvname, index=False)
+
+    def save_xls(self, xlsname, tweets):
+        """
+        Saves self.tweets dataframe to xls format.
+
+        Auxiliary function for to_XLS.
+        """
         # Create a Pandas Excel writer using XlsxWriter as the engine.
         writer = pd.ExcelWriter(xlsname, engine='xlsxwriter')
 
         # Convert the dataframe to an XlsxWriter Excel object.
-        self.tweets.to_excel(writer, sheet_name='Sheet1', index=False)
+        tweets.to_excel(writer, sheet_name='Sheet1', index=False)
 
         # Close the Pandas Excel writer and output the Excel file.
         writer.save()
+
+    def to_XLS(self, xlsname='', extend_existing=False, overwrite=False):
+        """
+        Writes self.tweets to XLS or XLSX format.
+
+        Keyword arguments:
+        xlsname         -- string -- path or filename of the XLS file.
+                        If it already exists, then append number until new
+                        filename created.
+        extend_existing -- Boolean -- If True, extends existing csv file
+        overwrite       -- Boolean -- If True, overwrites existing csv file
+                        extend_existing supersedes overwrite
+        """
+        if xlsname == '':
+            xlsname = 'Tweets.xlsx'
+
+        # Add file ending if left out
+        if not self.check_ending(xlsname, 'xlsx') and \
+                not self.check_ending(xlsname, 'xls'):
+            xlsname = xlsname + '.xlsx'
+
+        # Writes to a new file
+        if not overwrite and not extend_existing:
+            xlsname = self.new_fname_if_need(xlsname)
+            print("Saving to {}".format(xlsname))
+            self.save_xls(xlsname, self.tweets)
+
+        # Extends an existing file if valid path given
+        # Extend supersedes overwrite
+        elif extend_existing:
+            try:
+                old_tweets = pd.read_excel(xlsname)
+                if old_tweets.columns.equals(self.tweets.columns):
+                    new_tweets = pd.concat([self.tweets, old_tweets])
+                    print('Extending tweets in {}...'.format(xlsname))
+                    self.save_xls(xlsname, new_tweets)
+
+                else:
+                    print('Files do not have the same DataFrame columns. '
+                          'Saving to different filename instead.')
+                    self.to_XLS(xlsname)
+
+            except FileNotFoundError:
+                print('File could not be found. Creating new file with '
+                      'filename {}...'.format(xlsname))
+                self.save_xls(xlsname, self.tweets)
+            except:
+                raise
+
+        # Overwrites an existing file if needed
+        else:
+            print("Saving to {}".format(xlsname))
+            self.save_xls(xlsname, self.tweets)
 
     def get_tweet_full_text(self, tweet):
         """
@@ -197,7 +329,7 @@ class TweetCollector(object):
 if __name__ == '__main__':
     tw = TweetCollector(feedfile='example_feeds.csv')
     # Adds another column called clean_tweets
-    tw.clean_tweet_col()
-    tw.to_CSV(csvname='example_tweets.csv')
-    tw.to_XLS(xlsname='example_tweets.xls')
-    tw.save_feeds_csv(fname='example_feeds.csv')
+    #tw.clean_tweet_col()
+    tw.to_CSV(csvname='bla', overwrite=True, extend_existing=True)
+    tw.to_XLS(xlsname='Competitor_Tweets', overwrite=True, extend_existing=True)
+    #tw.save_feeds_csv(fname='example_feeds.csv')
