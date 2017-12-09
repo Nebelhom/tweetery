@@ -367,6 +367,9 @@ class TweetCollector(object):
 
         :returns:     string
 
+        See also
+        https://github.com/tweepy/tweepy/issues/737#issuecomment-349466847
+
         """
 
         full_text = ""
