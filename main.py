@@ -12,31 +12,79 @@ from nltk.corpus import stopwords
 pd.set_option("display.max_colwidth",999)
 import tweepy
 
-"""
-Purpose: Download tweets from interesting feeds. classify them into interesting and not interesting
-
-Use this to train a natural language model to classify future tweets.
-
-Later try to classify automatically into separate categories
-
-At the very end search large twitter space to look for fitting tweets across whole space with trained model
-"""
 
 class TweetCollector(object):
     """
-    Class written to download tweets from all feeds specified and then save them in a csv file... or sql (make it sql for fun)
+    TweetCollector class collects tweets from a set of pre-defined feeds based
+    on a defined file (default 'feeds.csv'). A twitter app account is
+    necessary for the class to work correctly. Parameters are to be defined in
+    a csv file (path default 'keys.csv').
 
-    currently planned format:
-    twitter_feed | Tweet | Date | Interesting? (Used to train classifier) | (Optional) Keywords automatically added
+    :'keys.csv' structure:
+    key,value
+    ckey,WWWWWWWWWWWWWWWWWWWWWWWWW
+    csecret,XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    atoken,YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
+    asecret,ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ
+
+    :'feeds.csv' structure:
+    feed,since_id
+    feed#1,-1
+    feed#2,933644665072603137
+    ...
+
+    :param feedfile: string, default 'feeds.csv' - path to csv file containing 
+                     information on feeds and since_id
+    :param keyfile:  string, default 'keys.csv' - path to csv file containing 
+                     information on twitter app
+
+    Methods defined here
+    get_tweets(self)
+        Download and accumulate tweets from multiple feeds.
+    
+    _download(self, feed, since_id, count=200, exclude_replies=True,
+                  include_rtf=True)
+        Download up to count tweets or tweets from since_id onwards from feed
+        using the tweepy api.
+
+    check_ending(self, fname, ending)
+        Compares end of filename, fname, with ending.
+
+    new_fname_if_need(self, fname)
+        Checks if file exists and proposes new fname if needed.
+        IMPORTANT: Relies on the fname having a .xxx ending
+
+    to_CSV(self, csvname='', extend_existing=False, overwrite=False)
+        Writes self.tweets to CSV format.
+
+    save_xls(self, xlsname, tweets)
+        Saves self.tweets dataframe to xls format.
+
+    to_XLS(self, xlsname='', extend_existing=False, overwrite=False)
+        Writes self.tweets to XLS or XLSX format.
+
+    get_tweet_full_text(self, tweet)
+        Finds full text of the tweet.
+        Irrespective of normal length, extended or retweeted status.
+
+    update_feeds_csv(self, fname='feeds.csv')
+        Saves or updates a list of feeds in csv format to the newest status id.
+
     """
 
     def __init__(self, feedfile='feeds.csv', keyfile='keys.csv'):
 
         kd = pd.read_csv(keyfile)
-        self.ckey = kd[kd['key']=='ckey']['value'].to_string(index=False)
-        self.csecret = kd[kd['key']=='csecret']['value'].to_string(index=False)
-        self.atoken =  kd[kd['key']=='atoken']['value'].to_string(index=False)
-        self.asecret =  kd[kd['key']=='asecret']['value'].to_string(index=False)
+        self.ckey = kd[kd['key'] == 'ckey']['value'].to_string(index=False)
+
+        self.csecret = kd[kd['key'] == 'csecret']['value'].to_string(
+            index=False)
+
+        self.atoken = kd[kd['key'] == 'atoken']['value'].to_string(
+            index=False)
+
+        self.asecret = kd[kd['key'] == 'asecret']['value'].to_string(
+            index=False)
 
         self.feeds = pd.read_csv(feedfile)
         self.columns = ['since_id', 'created_at', 'tweet', 'feed']
@@ -45,8 +93,17 @@ class TweetCollector(object):
 
     def get_tweets(self):
         """
-        Download and accumulate tweets from multiple feeds
+        Download and accumulate tweets from multiple feeds.
+
+        :returns:   Pandas DataFrame with columns:
+                    since_id    -- string of numbers corresponding to tweet
+                                   status id
+                    created_at  -- string in date format of posting time,
+                                   e.g. 2017-12-06 16:37:49
+                    tweet       -- string of tweet
+                    feed        -- string of name of twitter feed
         """
+
         alltweets = []
         for feed, since_id in self.feeds.values:
             tweets = self._download(feed, since_id)
@@ -54,21 +111,33 @@ class TweetCollector(object):
 
         return pd.concat(alltweets)
 
-    def _download(self, feed, since_id, count=200, exclude_replies=True, include_rtf=True):
+    def _download(self, feed, since_id, count=200, exclude_replies=True,
+                  include_rtf=True):
         """
-        Download tweets using tweetery.
+        Download up to count tweets or tweets from since_id onwards from feed
+        using the tweepy api.
 
-        Arguments:
-        feed - string - username on twitter; here comes from self.feeds dataframe
-        count=200 - integer - max. 200
-        since_id=None - None or string of integer
-        exclude_replies=True
-        - see # https://developer.twitter.com/en/docs/tweets/timelines/guides/working-with-timelines
-        include_rtf=True
-        - see # https://developer.twitter.com/en/docs/tweets/timelines/guides/working-with-timelines
+        see also https://developer.twitter.com/en/docs/tweets/timelines/guides/
+                 working-with-timelines
 
-        Returns:
-        df_tweets - pandas.DataFrame - columns=['since_id','created_at','tweet']
+        Keyword arguments:
+        :param feed:            string - username on twitter; here comes
+                                from self.feeds dataframe
+        :param count: =200      integer, default 200
+        :param since_id:        None or string of integers - latest twitter
+                                status id
+        :param exclude_replies: Boolean, default True - flag exclude tweet
+                                replies or not
+        :param include_rtf:     Boolean, default True - flag include retweets
+
+        :returns:               Pandas DataFrame with columns:
+                                since_id    -- string of numbers corresponding
+                                               to tweet status id
+                                created_at  -- string in date format of posting
+                                               time, e.g. 2017-12-06 16:37:49
+                                tweet       -- string of tweet
+                                feed        -- string of name of twitter feed
+
         """
 
         auth = tweepy.OAuthHandler(self.ckey, self.csecret)
@@ -92,7 +161,7 @@ class TweetCollector(object):
         # save most recent tweets
         alltweets.extend(new_tweets)
 
-        #transform the tweepy tweets into a 2D array that will populate the csv
+        # transform the tweepy tweets into a 2D array that will populate the csv
 
         outtweets = [[tweet.id_str, tweet.created_at,
                       self.get_tweet_full_text(tweet), feed]
@@ -104,8 +173,15 @@ class TweetCollector(object):
 
     def check_ending(self, fname, ending):
         """
-        Checks for correct ending.
+        Compares end of filename, fname, with ending.
+
+        :param fname:  string of filename, e.g. example.csv
+        :param ending: string of file ending, eg. csv
+
+        :returns: Boolean
+
         """
+
         fend = fname.split('.')[-1]
         if fend.lower() != ending.lower():
             return False
@@ -115,8 +191,15 @@ class TweetCollector(object):
         """
         Checks if file exists and proposes new fname if needed.
 
-        Relies on the fname having a .xxx ending
+        IMPORTANT: Relies on the fname having a .xxx ending
+
+        Keyword arguments:
+        :param fname: string of filename, e.g. example.csv
+
+        :returns: string
+
         """
+
         checking = True
         i = 1
         while checking:
@@ -134,13 +217,18 @@ class TweetCollector(object):
         """
         Writes self.tweets to CSV format.
 
-        Keyword arguments:
-        csvname         -- string -- path or filename of the CSV file.
-                        If it already exists, then append number until new
-                        filename created.
-        extend_existing -- Boolean -- If True, extends existing csv file
-        overwrite       -- Boolean -- If True, overwrites existing csv file
-                        extend_existing supersedes overwrite
+        :param csvname:         string, default '' - path or filename of the
+                                CSV file.
+                                If it already exists, then append number until
+                                new filename created.
+        :param extend_existing: Boolean, default False - If True, extends
+                                existing csv file
+        :param overwrite:       Boolean, default False - If True, overwrites
+                                existing csv file
+                                extend_existing supersedes overwrite
+
+        :returns: No return statement
+
         """
 
         if csvname == '':
@@ -187,7 +275,14 @@ class TweetCollector(object):
         Saves self.tweets dataframe to xls format.
 
         Auxiliary function for to_XLS.
+
+        :param xlsname: string - path or filename of the XLS(X) file.
+        :param tweets:  Pandas Dataframe
+
+        :returns: no return statement
+
         """
+
         # Create a Pandas Excel writer using XlsxWriter as the engine.
         writer = pd.ExcelWriter(xlsname, engine='xlsxwriter')
 
@@ -201,14 +296,19 @@ class TweetCollector(object):
         """
         Writes self.tweets to XLS or XLSX format.
 
-        Keyword arguments:
-        xlsname         -- string -- path or filename of the XLS file.
-                        If it already exists, then append number until new
-                        filename created.
-        extend_existing -- Boolean -- If True, extends existing csv file
-        overwrite       -- Boolean -- If True, overwrites existing csv file
-                        extend_existing supersedes overwrite
+        :param xlsname:         string - path or filename of the XLS file.
+                                If it already exists, then append number until
+                                new filename created.
+        :param extend_existing: boolean, default False - If True, extends
+                                existing csv file
+        :param overwrite:       boolean, default False - If True, overwrites
+                                existing csv file
+                                extend_existing supersedes overwrite
+
+        :returns:               no return statement
+
         """
+
         if xlsname == '':
             xlsname = 'Tweets.xlsx'
 
@@ -252,9 +352,17 @@ class TweetCollector(object):
 
     def get_tweet_full_text(self, tweet):
         """
-        Finds full text of the tweet. No matter if normal length, extended or
-        retweeted.
+        Finds full text of the tweet.
+
+        Irrespective of normal length, extended or retweeted status.
+
+        :param tweet: Tweepy Status Object
+                      see also http://docs.tweepy.org/en/v3.5.0/api.html
+
+        :returns:     string
+
         """
+
         full_text = ""
 
         if 'retweeted_status' in tweet._json:
@@ -285,10 +393,16 @@ class TweetCollector(object):
 
         return full_text
 
-    def save_feeds_csv(self, fname='feeds.csv'):
+    def update_feeds_csv(self, fname='feeds.csv'):
         """
-        Saves/Updates a list of feeds and also the oldest since_id
+        Saves or updates a list of feeds in csv format to the newest status id.
+
+        :param fname: string - path or filename of the csv file.
+
+        :returns: no return statement
+
         """
+
         feeds = self.tweets['feed'].unique()
         for f in feeds:
             since_id = self.tweets[self.tweets['feed'] == f]['since_id'].max()
@@ -299,4 +413,4 @@ if __name__ == '__main__':
     tw = TweetCollector(feedfile='example_feeds.csv')
     tw.to_CSV(csvname='example_tweets.csv', overwrite=True, extend_existing=True)
     tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True, extend_existing=True)
-    #tw.save_feeds_csv(fname='example_feeds.csv')
+    tw.save_feeds_csv(fname='example_feeds.csv')
