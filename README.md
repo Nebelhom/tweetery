@@ -12,11 +12,12 @@ TweetCollector class collects tweets from a set of pre-defined feeds using the t
 The feeds are based on a defined file. The default being 'feeds.csv' in the same folder, but can be defined according to your needs.
 
 ### Structure of feed file (csv format)
-
+```
 feed,since_id 
 feed_1,-1 
 feed_2,933644665072603137 
 ...
+```
 
 ## Twitter App
 A twitter app account is necessary for the class to work correctly. Parameters are to be defined in a csv file (path default 'keys.csv').
@@ -24,11 +25,13 @@ A twitter app account is necessary for the class to work correctly. Parameters a
 ### Structure of keys file for twitter app (csv file)
 As these parameters are to be kept secret, there is no key.csv file given by default.
 
+```
 key,value
 ckey,WWWWWWWWWWWWWWWWWWWWWWWWW
 csecret,XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 atoken,YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
 asecret,ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ
+```
 
 ## Example code
 ```
