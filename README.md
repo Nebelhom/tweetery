@@ -13,9 +13,9 @@ The feeds are based on a defined file. The default being 'feeds.csv' in the same
 
 ### Structure of feed file (csv format)
 
-feed,since_id
-feed#1,-1
-feed#2,933644665072603137
+feed,since_id 
+feed_1,-1 
+feed_2,933644665072603137 
 ...
 
 ## Twitter App
