@@ -1,16 +1,12 @@
 #!usr/bin/env python
 
-import csv
-import time
 import numpy as np
 import pandas as pd
 import os.path
-import string
-from nltk.corpus import stopwords
+import tweepy
 
 # Keys may otherwise not be properly displayed
-pd.set_option("display.max_colwidth",999)
-import tweepy
+pd.set_option("display.max_colwidth", 999)
 
 
 class TweetCollector(object):
@@ -33,6 +29,7 @@ class TweetCollector(object):
     feed#2,933644665072603137
     ...
 
+<<<<<<< c4c1803e757d7edbfcb085577c86c180c42d7603
     :param feedfile:        string, default 'feeds.csv' - path to csv file
                             containing information on feeds and since_id
     :param keyfile:         string, default 'keys.csv' - path to csv file
@@ -41,12 +38,18 @@ class TweetCollector(object):
     :param exclude_replies: Boolean, default True - flag exclude tweet
                             replies or not
     :param include_rts:     Boolean, default True - flag include retweets
+=======
+    :param feedfile: string, default 'feeds.csv' - path to csv file containing
+                     information on feeds and since_id
+    :param keyfile:  string, default 'keys.csv' - path to csv file containing
+                     information on twitter app
+>>>>>>> PEP8 addressed
 
     Methods defined here
 
     get_tweets(self)
         Download and accumulate tweets from multiple feeds.
-    
+
     _download(self, feed, since_id, count=200, exclude_replies=True,
                   include_rts=True)
         Download up to count tweets or tweets from since_id onwards from feed
@@ -163,17 +166,20 @@ class TweetCollector(object):
 
         if since_id == -1:
             new_tweets = api.user_timeline(screen_name=feed, count=count,
-                exclude_replies=exclude_replies, include_rts=include_rts,
-                tweet_mode='extended')
+                                           exclude_replies=exclude_replies,
+                                           include_rts=include_rts,
+                                           tweet_mode='extended')
         else:
             new_tweets = api.user_timeline(screen_name=feed, count=count,
-                since_id=since_id, exclude_replies=exclude_replies,
-                include_rts=include_rts, tweet_mode='extended')
+                                           since_id=since_id,
+                                           exclude_replies=exclude_replies,
+                                           include_rts=include_rts,
+                                           tweet_mode='extended')
 
         # save most recent tweets
         alltweets.extend(new_tweets)
 
-        # transform the tweepy tweets into a 2D array that will populate the csv
+        # transform tweepy tweets into a 2D array that will populate the csv
         outtweets = [[tweet.id_str, tweet.created_at,
                       self.get_tweet_full_text(tweet), feed]
                      for tweet in alltweets]
@@ -273,8 +279,6 @@ class TweetCollector(object):
                 print('File could not be found. Creating new file with '
                       'filename {}...'.format(csvname))
                 self.tweets.to_csv(csvname, index=False)
-            except:
-                raise
 
         # Overwrites an existing file if needed
         else:
@@ -353,8 +357,6 @@ class TweetCollector(object):
                 print('File could not be found. Creating new file with '
                       'filename {}...'.format(xlsname))
                 self.save_xls(xlsname, self.tweets)
-            except:
-                raise
 
         # Overwrites an existing file if needed
         else:
@@ -379,12 +381,16 @@ class TweetCollector(object):
         if 'retweeted_status' in tweet._json:
             full_text = tweet._json['retweeted_status']['full_text']
 
-        elif "extended_tweet" in tweet._json and "full_text" in tweet._json["extended_tweet"]:
+        elif "extended_tweet" in tweet._json and \
+                "full_text" in tweet._json["extended_tweet"]:
             full_text = tweet._json["extended_tweet"]["full_text"]
 
             if "display_text_range" in tweet._json["extended_tweet"]:
-                beginIndex = tweet._json["extended_tweet"]["display_text_range"][0]
-                endIndex   = tweet._json["extended_tweet"]["display_text_range"][1]
+                # Brackets to allow line split
+                beginIndex = (
+                    tweet._json["extended_tweet"]["display_text_range"][0])
+                endIndex = (
+                    tweet._json["extended_tweet"]["display_text_range"][1])
                 full_text = full_text[beginIndex:endIndex]
 
         elif "full_text" in tweet._json:
@@ -392,7 +398,7 @@ class TweetCollector(object):
 
             if "display_text_range" in tweet._json:
                 beginIndex = tweet._json["display_text_range"][0]
-                endIndex   = tweet._json["display_text_range"][1]
+                endIndex = tweet._json["display_text_range"][1]
                 full_text = full_text[beginIndex:endIndex]
 
         elif "text" in tweet._json:
@@ -420,8 +426,11 @@ class TweetCollector(object):
             self.feeds.loc[self.feeds['feed'] == f, 'since_id'] = since_id
         self.feeds.to_csv(fname, index=False)
 
+
 if __name__ == '__main__':
     tw = TweetCollector(feedfile='example_feeds.csv')
-    tw.to_CSV(csvname='example_tweets.csv', overwrite=True, extend_existing=False)
-    tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True, extend_existing=True)
-    #tw.save_feeds_csv(fname='example_feeds.csv')
+    tw.to_CSV(csvname='example_tweets.csv', overwrite=True,
+              extend_existing=False)
+    tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True,
+              extend_existing=True)
+    tw.save_feeds_csv(fname='example_feeds.csv')
