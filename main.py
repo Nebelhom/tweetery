@@ -33,12 +33,17 @@ class TweetCollector(object):
     feed#2,933644665072603137
     ...
 
-    :param feedfile: string, default 'feeds.csv' - path to csv file containing 
-                     information on feeds and since_id
-    :param keyfile:  string, default 'keys.csv' - path to csv file containing 
-                     information on twitter app
+    :param feedfile:        string, default 'feeds.csv' - path to csv file
+                            containing information on feeds and since_id
+    :param keyfile:         string, default 'keys.csv' - path to csv file
+                            containing information on twitter app
+    :param count:           integer, default 200
+    :param exclude_replies: Boolean, default True - flag exclude tweet
+                            replies or not
+    :param include_rts:     Boolean, default True - flag include retweets
 
     Methods defined here
+
     get_tweets(self)
         Download and accumulate tweets from multiple feeds.
     
@@ -72,7 +77,8 @@ class TweetCollector(object):
 
     """
 
-    def __init__(self, feedfile='feeds.csv', keyfile='keys.csv'):
+    def __init__(self, feedfile='feeds.csv', keyfile='keys.csv',
+                 count=200, include_rts=True, exclude_replies=True):
 
         kd = pd.read_csv(keyfile)
         self.ckey = kd[kd['key'] == 'ckey']['value'].to_string(index=False)
@@ -88,6 +94,11 @@ class TweetCollector(object):
 
         self.feeds = pd.read_csv(feedfile)
         self.columns = ['since_id', 'created_at', 'tweet', 'feed']
+
+        # Used in get_tweets and _download
+        self.count = count
+        self.ex_repl = exclude_replies
+        self.rts = include_rts
 
         self.tweets = self.get_tweets()
 
@@ -106,7 +117,8 @@ class TweetCollector(object):
 
         alltweets = []
         for feed, since_id in self.feeds.values:
-            tweets = self._download(feed, since_id)
+            tweets = self._download(feed, since_id, self.count, self.ex_repl,
+                                    self.rts)
             alltweets.append(tweets)
 
         return pd.concat(alltweets)
@@ -123,9 +135,9 @@ class TweetCollector(object):
         Keyword arguments:
         :param feed:            string - username on twitter; here comes
                                 from self.feeds dataframe
-        :param count: =200      integer, default 200
         :param since_id:        None or string of integers - latest twitter
                                 status id
+        :param count:           integer, default 200
         :param exclude_replies: Boolean, default True - flag exclude tweet
                                 replies or not
         :param include_rts:     Boolean, default True - flag include retweets
@@ -162,7 +174,6 @@ class TweetCollector(object):
         alltweets.extend(new_tweets)
 
         # transform the tweepy tweets into a 2D array that will populate the csv
-
         outtweets = [[tweet.id_str, tweet.created_at,
                       self.get_tweet_full_text(tweet), feed]
                      for tweet in alltweets]
@@ -413,4 +424,4 @@ if __name__ == '__main__':
     tw = TweetCollector(feedfile='example_feeds.csv')
     tw.to_CSV(csvname='example_tweets.csv', overwrite=True, extend_existing=False)
     tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True, extend_existing=True)
-    tw.save_feeds_csv(fname='example_feeds.csv')
+    #tw.save_feeds_csv(fname='example_feeds.csv')
