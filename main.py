@@ -43,7 +43,7 @@ class TweetCollector(object):
         Download and accumulate tweets from multiple feeds.
     
     _download(self, feed, since_id, count=200, exclude_replies=True,
-                  include_rtf=True)
+                  include_rts=True)
         Download up to count tweets or tweets from since_id onwards from feed
         using the tweepy api.
 
@@ -112,7 +112,7 @@ class TweetCollector(object):
         return pd.concat(alltweets)
 
     def _download(self, feed, since_id, count=200, exclude_replies=True,
-                  include_rtf=True):
+                  include_rts=True):
         """
         Download up to count tweets or tweets from since_id onwards from feed
         using the tweepy api.
@@ -128,7 +128,7 @@ class TweetCollector(object):
                                 status id
         :param exclude_replies: Boolean, default True - flag exclude tweet
                                 replies or not
-        :param include_rtf:     Boolean, default True - flag include retweets
+        :param include_rts:     Boolean, default True - flag include retweets
 
         :returns:               Pandas DataFrame with columns:
                                 since_id    -- string of numbers corresponding
@@ -151,12 +151,12 @@ class TweetCollector(object):
 
         if since_id == -1:
             new_tweets = api.user_timeline(screen_name=feed, count=count,
-                exclude_replies=exclude_replies, include_rtf=include_rtf,
+                exclude_replies=exclude_replies, include_rts=include_rts,
                 tweet_mode='extended')
         else:
             new_tweets = api.user_timeline(screen_name=feed, count=count,
                 since_id=since_id, exclude_replies=exclude_replies,
-                include_rtf=include_rtf, tweet_mode='extended')
+                include_rts=include_rts, tweet_mode='extended')
 
         # save most recent tweets
         alltweets.extend(new_tweets)
@@ -411,6 +411,6 @@ class TweetCollector(object):
 
 if __name__ == '__main__':
     tw = TweetCollector(feedfile='example_feeds.csv')
-    tw.to_CSV(csvname='example_tweets.csv', overwrite=True, extend_existing=True)
+    tw.to_CSV(csvname='example_tweets.csv', overwrite=True, extend_existing=False)
     tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True, extend_existing=True)
     tw.save_feeds_csv(fname='example_feeds.csv')
