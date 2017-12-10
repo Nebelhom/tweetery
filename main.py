@@ -20,8 +20,6 @@ class TweetCollector(object):
     key,value
     ckey,WWWWWWWWWWWWWWWWWWWWWWWWW
     csecret,XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    atoken,YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
-    asecret,ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ
 
     :'feeds.csv' structure:
     feed,since_id
@@ -80,12 +78,6 @@ class TweetCollector(object):
         self.ckey = kd[kd['key'] == 'ckey']['value'].to_string(index=False)
 
         self.csecret = kd[kd['key'] == 'csecret']['value'].to_string(
-            index=False)
-
-        self.atoken = kd[kd['key'] == 'atoken']['value'].to_string(
-            index=False)
-
-        self.asecret = kd[kd['key'] == 'asecret']['value'].to_string(
             index=False)
 
         self.feeds = pd.read_csv(feedfile)
@@ -149,7 +141,6 @@ class TweetCollector(object):
         """
 
         auth = tweepy.OAuthHandler(self.ckey, self.csecret)
-        auth.set_access_token(self.atoken, self.asecret)
         api = tweepy.API(auth)
 
         # from
