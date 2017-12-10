@@ -429,4 +429,4 @@ if __name__ == '__main__':
               extend_existing=False)
     tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True,
               extend_existing=True)
-    tw.save_feeds_csv(fname='example_feeds.csv')
+    tw.update_feeds_csv(fname='example_feeds.csv')
