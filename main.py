@@ -146,8 +146,6 @@ class TweetCollector(object):
         # from
         # https://gist.github.com/yanofsky/5436496
 
-        alltweets = []
-
         if since_id == -1:
             new_tweets = api.user_timeline(screen_name=feed, count=count,
                                            exclude_replies=exclude_replies,
@@ -160,13 +158,10 @@ class TweetCollector(object):
                                            include_rts=include_rts,
                                            tweet_mode='extended')
 
-        # save most recent tweets
-        alltweets.extend(new_tweets)
-
         # transform tweepy tweets into a 2D array that will populate the csv
         outtweets = [[tweet.id_str, tweet.created_at,
                       self.get_tweet_full_text(tweet), feed]
-                     for tweet in alltweets]
+                     for tweet in new_tweets]
 
         df_tweets = pd.DataFrame(data=outtweets, columns=self.columns)
 
