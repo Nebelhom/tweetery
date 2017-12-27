@@ -31,11 +31,9 @@ TODO:
 
 class Text_Classifier():
     """
-    Explanation
     """
     def __init__(self, clf_text, train_X, train_y):
         """
-        asdfasdf
         """
         # Adjust to a property function based on ending either csv or xlsx
         self.tfidf = TfidfVectorizer(analyzer=self.text_process,
@@ -46,6 +44,8 @@ class Text_Classifier():
         self.clf_text = clf_text
         # Pandas series or None
         self.prediction = None
+        # Pandas series or None
+        self.proba = None
         # Pandas Dataframe of clf_text & prediction or None
         self.paired = None
 
@@ -101,9 +101,15 @@ class Text_Classifier():
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
         pass
 
-    def predict(self):
+    def predict(self, pref_prob=1):
+        """
+        pref_prob - index of preferred probability of classification
+        """
         self.prediction = self.model.predict(self.clf_text)
-        self.paired = pd.DataFrame({'text': self.clf_text, 'interesting': self.prediction})
+        self.proba = self.model.predict_proba(self.clf_text)
+        self.paired = pd.DataFrame({'text': self.clf_text,
+                                    'interesting': self.prediction,
+                                    'probability': self.proba[:,pref_prob]})
 
 
 if __name__ == '__main__':
