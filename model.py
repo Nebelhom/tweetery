@@ -12,12 +12,8 @@ import numpy as np
 from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 
-from sklearn.model_selection import train_test_split
-# from sklearn.feature_extraction.text import CountVectorizer
-# from sklearn.naive_bayes import MultinomialNB
-# from sklearn.svm import SVC
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.linear_model import LogisticRegression
-# from sklearn.grid_search import GridSearchCV
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
 
@@ -34,18 +30,24 @@ TODO:
 """
 
 
-class Text_Classifier():
+class Text_Classifier(object):
     """
     """
-    def __init__(self, clf_text, train_X, train_y):
+    def __init__(self, clf_text, train_X=None, train_y=None):
         """
+        self._dest = path to data directory
+        self._clf_path = path to pickled classifier
+        self._hyperparams = path to pre-saved hyperparams
         """
-        self._dest = osp.join(os.getcwd(), 'pickles')
-        self._clf_path = osp.join(os.getcwd(), 'pickles', 'classifier.pkl')
+        # Paths
+        self._dest = osp.join(os.getcwd(), 'data')
+        self._clf_path = osp.join(self._dest, 'classifier.pkl')
+        self._hyperparams = osp.join(self._dest, 'hyperparams.pkl')
 
         # Adjust to a property function based on ending either csv or xlsx
         self.tfidf = TfidfVectorizer(analyzer=self.text_process,
                                      ngram_range=(1, 1))
+
         self.clf = self.create_classifier(train_X, train_y)
 
         # Pandas Series or None
@@ -66,12 +68,14 @@ class Text_Classifier():
         """
         if type(mess) is not str:
             mess = str(mess)
-        
+
         # Check characters to see if they are in punctuation
-        nopunc = [char for char in mess if char not in string.punctuation + "–"]
+        nopunc = [char for char in mess
+                  if char not in string.punctuation + "–"]
 
         # Check if char is an emoji
-        noemoji = [char for char in nopunc if char not in emoji.UNICODE_EMOJI.keys()]
+        noemoji = [char for char in nopunc
+                   if char not in emoji.UNICODE_EMOJI.keys()]
 
         # Join the characters again to form the string.
         nopunc = ''.join(noemoji)
@@ -79,13 +83,13 @@ class Text_Classifier():
         # Now just remove any stopwords
         no_stop = [word for word in nopunc.split() if word.lower() not in
                    stopwords.words('english') if 'http' not in word.lower()]
-        
+
         # Stemming
         snowball = SnowballStemmer('english')
-        
+
         return [snowball.stem(word) for word in no_stop]
 
-    def create_classifier(self, X, y, ignore_saved_model=False):
+    def create_classifier(self, X=None, y=None, ignore_saved_model=False):
         """
         Returns a fully trained model ready to be used.
         TODO:
@@ -99,27 +103,67 @@ class Text_Classifier():
 
         else:
             print('No classifier pre-saved. Please wait while a new ',
-                  'classifier is calibrated...')
-            pipe = Pipeline([
-                ('vect', self.tfidf),
-                ('clf', LogisticRegression(C=10.0, penalty='l2'))
-            ])
-            pipe.fit(X, y)
-            print('Classifier has been calibrated.')
-            return pipe
+                  'classifier is being calibrated...')
 
-    def calibrate(self, fname, X, y):
+            if X is not None and y is not None:
+                clf = self.calibrate(X, y)
+                #pipe = Pipeline([
+                #    ('vect', self.tfidf),
+                #    ('clf', LogisticRegression(C=10.0, penalty='l2'))
+                #])
+                #pipe.fit(X, y)
+                print('Classifier has been calibrated.')
+                return clf
+
+            else:
+                print('You have not defined any training data.',
+                      ' Please define:\n')
+                if X is None:
+                    print('X - pandas Dataframe defining data features.\n')
+                if y is None:
+                    print('y - pandas Data Series defining the expected',
+                          ' classification.\n')
+                return
+
+    def calibrate(self, X, y, full_calibration=False):
         """
         Take calibration data and calibrate
-        Give choice, with pre-existing values set or completely from scratch 
-        (later).
-        Use Gridsearch for it and several classifiers for it.
+        Give choice, with pre-existing values set or completely from scratch
+         (later).
+        Use Gridsearch and several classifiers (if possible) for it.
         """
 
         X_train, X_test, y_train, y_test = train_test_split(X, y,
                                                             test_size=0.33,
                                                             random_state=42)
-        pass
+        tfidf = TfidfVectorizer(analyzer=self.text_process)
+        pipe = Pipeline([
+            ('vect', tfidf),
+            ('clf', LogisticRegression())
+        ])
+
+        clf = None
+
+        if full_calibration:
+            param_grid = [
+                {'vect__ngram_range': [(1, 1), (2, 2), (1, 2)],
+                 'vect__use_idf': [False, True],
+                 'clf__penalty': ['l1', 'l2'],
+                 'clf__C': [0.1, 1.0, 10.0, 100.0]
+                 }
+            ]
+            grid = GridSearchCV(pipe, param_grid, scoring='accuracy',
+                               cv=10, verbose=10, n_jobs=-1)
+            grid.fit(X_train, y_train)
+            clf = grid.best_estimator_
+
+        else:
+            param_grid = pickle.load(open(self._hyperparams, 'rb'))
+            pipe.set_params(**param_grid)
+            pipe.fit(X_train, y_train)
+            clf = pipe
+
+        return clf
 
     def predict(self, pref_prob=1):
         """
@@ -129,17 +173,23 @@ class Text_Classifier():
         self.proba = self.clf.predict_proba(self.clf_text)
         self.paired = pd.DataFrame({'text': self.clf_text,
                                     'interesting': self.prediction,
-                                    'probability': self.proba[:,pref_prob]})
+                                    'probability': self.proba[:, pref_prob]})
 
     def save_classifier(self):
-        if self.clf is None:
-            print('Cannot save NoneType. Are you sure a classifier is loaded?')
-        else:
-            if not osp.exists(self._dest):
-                os.makedirs(self._dest)
-            pickle.dump(self.clf, open(self._clf_path, 'wb'),
-                              protocol=4)
-            print('Classifier saved.')
+        #if self.clf is None:
+        #    print('Cannot save NoneType. Are you sure a classifier is loaded?')
+        #else:
+        if not osp.exists(self._dest):
+            os.makedirs(self._dest)
+        # Classifier saved
+        pickle.dump(self.clf, open(self._clf_path, 'wb'),
+                    protocol=4)
+        print('Classifier saved.')
+        
+        # Hyperparameters saved
+        pickle.dump(self.clf.get_params(), open(self._hyperparams, 'wb'),
+                    protocol=4)
+        print('Hyperparameters of Classifier saved.')
 
 
 if __name__ == '__main__':
