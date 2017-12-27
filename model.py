@@ -107,11 +107,6 @@ class Text_Classifier(object):
 
             if X is not None and y is not None:
                 clf = self.calibrate(X, y)
-                #pipe = Pipeline([
-                #    ('vect', self.tfidf),
-                #    ('clf', LogisticRegression(C=10.0, penalty='l2'))
-                #])
-                #pipe.fit(X, y)
                 print('Classifier has been calibrated.')
                 return clf
 
@@ -123,7 +118,7 @@ class Text_Classifier(object):
                 if y is None:
                     print('y - pandas Data Series defining the expected',
                           ' classification.\n')
-                return
+                return None
 
     def calibrate(self, X, y, full_calibration=False):
         """
@@ -153,7 +148,7 @@ class Text_Classifier(object):
                  }
             ]
             grid = GridSearchCV(pipe, param_grid, scoring='accuracy',
-                               cv=10, verbose=10, n_jobs=-1)
+                                cv=10, verbose=10, n_jobs=-1)
             grid.fit(X_train, y_train)
             clf = grid.best_estimator_
 
@@ -176,20 +171,20 @@ class Text_Classifier(object):
                                     'probability': self.proba[:, pref_prob]})
 
     def save_classifier(self):
-        #if self.clf is None:
-        #    print('Cannot save NoneType. Are you sure a classifier is loaded?')
-        #else:
-        if not osp.exists(self._dest):
-            os.makedirs(self._dest)
-        # Classifier saved
-        pickle.dump(self.clf, open(self._clf_path, 'wb'),
-                    protocol=4)
-        print('Classifier saved.')
-        
-        # Hyperparameters saved
-        pickle.dump(self.clf.get_params(), open(self._hyperparams, 'wb'),
-                    protocol=4)
-        print('Hyperparameters of Classifier saved.')
+        if self.clf is None:
+            print('Cannot save NoneType. Are you sure a classifier is loaded?')
+        else:
+            if not osp.exists(self._dest):
+                os.makedirs(self._dest)
+            # Classifier saved
+            pickle.dump(self.clf, open(self._clf_path, 'wb'),
+                        protocol=4)
+            print('Classifier saved.')
+
+            # Hyperparameters saved
+            pickle.dump(self.clf.get_params(), open(self._hyperparams, 'wb'),
+                        protocol=4)
+            print('Hyperparameters of Classifier saved.')
 
 
 if __name__ == '__main__':
