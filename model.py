@@ -33,7 +33,7 @@ TODO:
 class Text_Classifier(object):
     """
     """
-    def __init__(self, clf_text, train_X=None, train_y=None):
+    def __init__(self, clf_text, train_X=None, train_y=None, ignore_saved=False):
         """
         self._dest = path to data directory
         self._clf_path = path to pickled classifier
@@ -48,7 +48,8 @@ class Text_Classifier(object):
         self.tfidf = TfidfVectorizer(analyzer=self.text_process,
                                      ngram_range=(1, 1))
 
-        self.clf = self.create_classifier(train_X, train_y)
+        self.clf = self.create_classifier(train_X, train_y,
+                                          ignore_saved_model=ignore_saved)
 
         # Pandas Series or None
         self.clf_text = clf_text
@@ -190,7 +191,7 @@ class Text_Classifier(object):
 if __name__ == '__main__':
     clf = pd.read_excel('example_tweets.xlsx')
     df = pd.read_excel('training_data.xlsx')
-    ml = Text_Classifier(clf['tweet'], df['tweet'], df['interesting'])
+    ml = Text_Classifier(clf['tweet'], df['tweet'], df['interesting'], ignore_saved=True)
     ml.save_classifier()
     ml.predict()
     print(ml.paired)
