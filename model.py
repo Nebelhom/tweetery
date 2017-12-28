@@ -186,11 +186,33 @@ class Text_Classifier(object):
                         protocol=4)
             print('Hyperparameters of Classifier saved.')
 
+    def save_as_txt(self, fname='report.txt', cut_off=0.25):
+        """
+        Saves the classification outcome as a text of tweet | Relevance.
+        """
+        if self.prediction is None or self.proba is None or \
+                self.paired is None:
+            print('No classification has taken place. Please',
+                  ' re-use this method after classification has taken place')
+            return
+
+        else:
+            with open(fname, 'w') as f:
+                f.write('{:12s}\t{}\n'.format('Relevance', 'Text'))
+                f.write('{:12s}\t{}\n'.format('=========', '===='))
+                rel = self.paired[['probability', 'text']].sort_values(by='probability', ascending=False)
+                for prob, line in rel.values:
+                    if prob >= cut_off:
+                        f.write('{:7.2f}%\t{}\n'.format(prob*100, line))
+            print('Report saved in {}'.format(osp.abspath(fname)))
+            return
+
 
 if __name__ == '__main__':
     clf = pd.read_excel('example_tweets.xlsx')
     df = pd.read_excel('training_data.xlsx')
     ml = Text_Classifier(clf['tweet'], df['tweet'], df['interesting'])
-    ml.save_classifier()
+    # Commented out so that hyperparam.pkl does not always change on commit
+    # ml.save_classifier()
     ml.predict()
-    print(ml.paired)
+    ml.save_as_txt()
