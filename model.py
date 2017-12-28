@@ -3,7 +3,7 @@
 import os
 import os.path as osp
 from pathlib import Path
-import pickle
+from sklearn.externals import joblib
 import string
 
 import pandas as pd
@@ -22,9 +22,6 @@ import emoji
 
 """
 TODO:
-- Save and load model in pickle or SQL
-- calibrate method to make it check all models and parameters
-- In create_model: check for file or calibrate model (be verbose if poss)
 - Output as report
 
 """
@@ -93,12 +90,10 @@ class Text_Classifier(object):
     def create_classifier(self, X=None, y=None, ignore_saved_model=False):
         """
         Returns a fully trained model ready to be used.
-        TODO:
-        - Integrate calibrate
-        - Check if there is a file that can be loaded
         """
+
         if Path(self._clf_path).is_file() and not ignore_saved_model:
-            model = pickle.load(open(self._clf_path, 'rb'))
+            model = joblib.load(open(self._clf_path, 'rb'))
             print('Classifier successfully loaded')
             return model
 
@@ -154,7 +149,7 @@ class Text_Classifier(object):
             clf = grid.best_estimator_
 
         else:
-            param_grid = pickle.load(open(self._hyperparams, 'rb'))
+            param_grid = joblib.load(open(self._hyperparams, 'rb'))
             pipe.set_params(**param_grid)
             pipe.fit(X_train, y_train)
             clf = pipe
@@ -165,6 +160,7 @@ class Text_Classifier(object):
         """
         pref_prob - index of preferred probability of classification
         """
+
         self.prediction = self.clf.predict(self.clf_text)
         self.proba = self.clf.predict_proba(self.clf_text)
         self.paired = pd.DataFrame({'text': self.clf_text,
@@ -172,18 +168,21 @@ class Text_Classifier(object):
                                     'probability': self.proba[:, pref_prob]})
 
     def save_classifier(self):
+        """
+        """
+
         if self.clf is None:
             print('Cannot save NoneType. Are you sure a classifier is loaded?')
         else:
             if not osp.exists(self._dest):
                 os.makedirs(self._dest)
             # Classifier saved
-            pickle.dump(self.clf, open(self._clf_path, 'wb'),
+            joblib.dump(self.clf, open(self._clf_path, 'wb'),
                         protocol=4)
             print('Classifier saved.')
 
             # Hyperparameters saved
-            pickle.dump(self.clf.get_params(), open(self._hyperparams, 'wb'),
+            joblib.dump(self.clf.get_params(), open(self._hyperparams, 'wb'),
                         protocol=4)
             print('Hyperparameters of Classifier saved.')
 
@@ -191,7 +190,7 @@ class Text_Classifier(object):
 if __name__ == '__main__':
     clf = pd.read_excel('example_tweets.xlsx')
     df = pd.read_excel('training_data.xlsx')
-    ml = Text_Classifier(clf['tweet'], df['tweet'], df['interesting'], ignore_saved=True)
+    ml = Text_Classifier(clf['tweet'], df['tweet'], df['interesting'])
     ml.save_classifier()
     ml.predict()
     print(ml.paired)
