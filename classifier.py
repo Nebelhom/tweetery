@@ -19,11 +19,21 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
 
 import docx
-from docx.shared import Cm, Inches
+from docx.shared import Inches
 from hyperlink import add_hyperlink
 
 # https://pypi.python.org/pypi/emoji/
 import emoji
+
+
+"""
+Description
+
+Keyword arguments:
+:param X:            type - description
+
+:returns:               type        -- description
+"""
 
 
 TODAY = datetime.date.today()
@@ -31,19 +41,75 @@ TODAY = datetime.date.today()
 
 class Tweet_Classifier(object):
     """
-    add_clf_info - additional information on the tweet such as feed, data, since_id, etc
-    """
-    def __init__(self, data, train=None, ignore_saved=False):
-        """
-        self._dest = path to data directory
-        self._clf_path = path to pickled classifier
-        self._hyperparams = path to pre-saved hyperparams
+    Tweet_Classifier classifies tweets into interesting and not interesting
+    based on a Logistic Regression model.
 
-        self.data - pd.DataFrame with columns since_id  created_at  tweet   feed
-        """
+    It takes in a Pandas DataFrame pre-downloaded by TweetCollector and extends
+    the DataFrame by the classification and the probability of this prediction.
+
+    :param data:            Pandas DataFrame
+                            Columns contain:
+                            since_id    -- string of numbers corresponding
+                                           to tweet status id
+                            created_at  -- string in date format of posting
+                                           time, e.g. 2017-12-06 16:37:49
+                            tweet       -- string of tweet
+                            feed        -- string of name of twitter feed
+
+    :param train:           Pandas DataFrame
+                            Columns contain:
+                            since_id    -- string of numbers corresponding
+                                           to tweet status id
+                            created_at  -- string in date format of posting
+                                           time, e.g. 2017-12-06 16:37:49
+                            tweet       -- string of tweet
+                            feed        -- string of name of twitter feed
+                            interesting -- int signifying interesting or not
+
+    :param ignore saved:    Boolean - flag: ignores saved classifier and re-
+                            calibrates if true (default:False)
+
+    Methods defined here
+
+    def create_classifier(self, X=None, y=None, ignore_saved_model=False)
+        Returns a fully trained Logistic Regression model ready to be used
+        for predictions.
+        Exception: In case there are no pickled classifier, no hyperparameters
+        and no training data supplied, None is returned.
+
+    def calibrate(self, X, y, full_calibration=False)
+        Calibrate a prediction model based on a sklearn.Pipeline of a
+        TfidfVectorizer using self.text_process as the analyzer and a Logistic
+        Regression model.
+
+    def predict(self, pref_prob=1)
+        Uses self.clf's classification model to predict if a Pandas
+        Series of Tweets are interesting (numpy.array[,]) and the
+        respective probabilites (numpy.array[[],]).
+
+    def save_classifier(self)
+        Saves classification model and the respective hyperparameters as pickle
+        file each using sklearn.joblib.dump.
+
+    def save_as_txt(self, fname='report{}.txt'.format(TODAY), cut_off=0.25)
+        Saves the classification outcome as a text file
+
+    def save_as_doc(self, fname='report{}.docx'.format(TODAY),
+                    doc_title='Tweet Report {}'.format(TODAY), cut_off=0.25)
+        Saves the classification outcome in a table of a docx file.
+
+    def text_process(self, mess)
+        Converts string into list of bag of words.
+    """
+
+    def __init__(self, data, train=None, ignore_saved=False):
+
         # Paths
+        # path to data directory
         self._dest = osp.join(os.getcwd(), 'data')
+        # path to pickled classifier
         self._clf_path = osp.join(self._dest, 'classifier.pkl')
+        # path to pre-saved hyperparams
         self._hyperparams = osp.join(self._dest, 'hyperparams.pkl')
 
         # information fed into class
@@ -69,13 +135,28 @@ class Tweet_Classifier(object):
 
     def create_classifier(self, X=None, y=None, ignore_saved_model=False):
         """
-        Returns a fully trained model ready to be used.
+        Returns a fully trained Logistic Regression model ready to be used
+        for predictions.
+        Exception: In case there are no pickled classifier, no hyperparameters
+        and no training data supplied, None is returned. 
+
+        Keyword arguments:
+        :param X:                   Pandas Series - Collection of Tweets
+        :param y:                   Pandas Series - Collection of Integers
+                                                    1 = Interesting, 0 = Not
+        :param ignore_saved_model:  Boolean       - flag: Ignores pickled model
+                                                    Allows for recalibration if
+                                                    new training data given.
+
+        :returns:                   trained sklearn.Pipeline
+                                        ('vect', tfidf),
+                                        ('clf', LogisticRegression())
         """
 
         if Path(self._clf_path).is_file() and not ignore_saved_model:
-            model = joblib.load(open(self._clf_path, 'rb'))
+            clf = joblib.load(open(self._clf_path, 'rb'))
             print('Classifier successfully loaded')
-            return model
+            return clf
 
         else:
             print('No classifier pre-saved. Please wait while a new ',
@@ -98,10 +179,24 @@ class Tweet_Classifier(object):
 
     def calibrate(self, X, y, full_calibration=False):
         """
-        Take calibration data and calibrate
-        Give choice, with pre-existing values set or completely from scratch
-         (later).
-        Use Gridsearch and several classifiers (if possible) for it.
+        Calibrate a prediction model based on a sklearn.Pipeline of a
+        TfidfVectorizer using self.text_process as the analyzer and a Logistic
+        Regression model.
+        The training data allow to classify tweets downloaded from pre-defined
+        feeds.
+
+        Keyword arguments:
+        :param X:                   Pandas Series - Collection of Tweets
+        :param y:                   Pandas Series - Collection of Integers
+                                                    1 = Interesting, 0 = Not
+        :param full_calibration:    Boolean       - flag: results in full
+                                                    calibration of a new model
+                                                    using sklearn.GridSearchCV
+                                                    (Will take several minutes)
+
+        :returns:                   trained sklearn.Pipeline
+                                        ('vect', tfidf),
+                                        ('clf', LogisticRegression())
         """
 
         X_train, X_test, y_train, y_test = train_test_split(X, y,
@@ -138,13 +233,37 @@ class Tweet_Classifier(object):
 
     def predict(self, pref_prob=1):
         """
-        pref_prob - index of preferred probability of classification
+        Uses self.clf's classification model to predict if a Pandas
+        Series of Tweets are interesting (numpy.array[,]) and the
+        respective probabilites (numpy.array[[],]).
+
+        The resulting predictions are merged together with originally
+        passed self.data on the tweets as self.assembled.
+
+        Keyword arguments:
+        :param pref_prob:   int - Passes index of which probability should
+                                  be listed in self.assembled. (default=1,
+                                  i.e. interesting = 1)
+
+        :returns:           None
+
+        :side-effects:      self.assembled set to Pandas DataFrame
+                            Pandas DataFrame with Columns
+                            since_id    -- string of numbers corresponding
+                                           to tweet status id
+                            created_at  -- string in date format of posting
+                                           time, e.g. 2017-12-06 16:37:49
+                            tweet       -- string of tweet
+                            feed        -- string of name of twitter feed
+                            interesting -- int signifying interesting or not
+                            probability -- numpy.float of probability of
+                                           interesting
         """
 
         self.prediction = self.clf.predict(self.clf_text)
-        # print(self.prediction)
+
         self.proba = self.clf.predict_proba(self.clf_text)
-        # print(self.proba)
+
         a = pd.DataFrame({'tweet': self.clf_text,
                           'interesting': self.prediction,
                           'probability': self.proba[:, pref_prob]})
@@ -153,6 +272,16 @@ class Tweet_Classifier(object):
 
     def save_classifier(self):
         """
+        Saves classification model and the respective hyperparameters as pickle
+        file each using sklearn.joblib.dump.
+
+        Keyword arguments:
+        No params
+
+        :returns:       None
+
+        :side-effects:  Saves a serialized python object structure
+                        (pickled file)
         """
 
         if self.clf is None:
@@ -172,8 +301,25 @@ class Tweet_Classifier(object):
 
     def save_as_txt(self, fname='report{}.txt'.format(TODAY), cut_off=0.25):
         """
-        Saves the classification outcome as a text of tweet | Relevance.
+        Saves the classification outcome as a text file.
+
+        Columns:
+        - Relevance as a percentage
+        - Tweet
+        - URL of tweet
+        - Date in format YYYY-MM-DD HH:MM:SS
+
+        Keyword arguments:
+        :param fname:   string - filename or path to filename
+                        (default: reportYYYY-MM-DD.txt)
+        :param cut_off: float - percentage under which the tweet will be
+                        disregarded from the report (default: 0.25)
+
+        :returns:       type        -- description
+
+        :side-effects:  Saves a txt file under fname.
         """
+
         if self.prediction is None or self.proba is None or \
                 self.assembled is None:
             print('No classification has taken place. Please',
@@ -181,7 +327,7 @@ class Tweet_Classifier(object):
             return
 
         else:
-            with open(fname, 'w') as f:
+            with open(osp.abspath(fname), 'w') as f:
                 f.write('{:12s}\t{}\t{}\t{}\n'.format('Relevance', 'Text',
                                                       'URL', 'Date'))
                 f.write('{:12s}\t{}\t{}\t{}\n'.format('=========', '====',
@@ -202,23 +348,61 @@ class Tweet_Classifier(object):
             return
 
     def save_as_doc(self, fname='report{}.docx'.format(TODAY),
-                    doc_title='Tweet Report{}'.format(TODAY), cut_off=0.25):
+                    doc_title='Tweet Report {}'.format(TODAY), cut_off=0.25):
         """
-        Saves the classification outcome as a text of tweet | Relevance.
+        Saves the classification outcome in a table of a docx file.
 
-        Add cols: URL and Date
-        Include Hyperlinks inside tweets
-        Show Feed as feed with hyperlink to tweet
+        Columns:
+        - Relevance as a percentage
+        - Tweet
+        - Feed / Link text feed with hyperlink to URL of tweet
+        - Date in format YYYY-MM-DD
+
+        Keyword arguments:
+        :param fname:       string - filename or path to filename
+                            (default: reportYYYY-MM-DD.docx)
+        :param doc_title:   string - title of document
+                            (default: Tweet Report YYYY-MM-DD.txt)
+        :param cut_off:     float - percentage under which the tweet will be
+                            disregarded from the report (default: 0.25)
+
+        :returns:           None
+
+        :side-effects:      Saves a docx file under fname.
 
         """
 
         def make_bold(cell):
+            """
+            Puts text content of cell in bold
+                                    
+            Keyword arguments:
+            :param cell:    cell of table
+    
+            :returns:       None
+            """
+
             run = cell.paragraphs[0].runs[0]
             font = run.font
             font.bold = True
             return
 
         def make_hyperlink(cell, url, text, color=None, underline=True):
+            """
+            Adds a text with hyperlink_url into cell of table.
+                                    
+            Keyword arguments:
+            :param cell:        docx.Table._cell of table
+            :param url:         string  - url for hyperlink
+            :param text:        string  - docx text imbued with url as
+                                hyperlink
+            :param color:       string  - hex of color
+                                (default: None)
+            :param underline:   boolean - flag: underline hyperlink
+    
+            :returns:       None
+            """
+
             p = cell.paragraphs[0]
             hyperlink = add_hyperlink(p, url, text, None, True)
             return
@@ -230,7 +414,17 @@ class Tweet_Classifier(object):
             table = docx.Table() instance
             col_widths = iterable of ints (width in EMUs)
                          Helper functions like Cm() or Inches() help
+            Description
+                                    
+            Keyword arguments:
+            :param table:       docx.Table object
+            :param col_widths:  list/tuple of int - widths in EMUs
+                                Helper functions like Cm() or Inches() help
+    
+            :returns:           None
+
             """
+
             for col, width in zip(table.columns, col_widths):
                 col.width = width
             return
@@ -285,16 +479,24 @@ class Tweet_Classifier(object):
             set_col_widths(table, (Inches(1.06), Inches(3.0), Inches(0.88),
                                    Inches(1.06)))
 
-            doc.save(fname)
+            doc.save(osp.abspath(fname))
             print('Report saved in {}'.format(osp.abspath(fname)))
             return
 
     def text_process(self, mess):
         """
-        Takes in a string of text, then performs the following:
+        Converts string into list of bag of words.
+
+        Conversion steps are:
         1. Remove all punctuation
-        2. Remove all stopwords
-        3. Returns a list of the cleaned text
+        2. Remove all emojis
+        3. Remove all stopwords (based on nltk)
+        4. Use stemmer to convert all verbs to base form
+
+        Keyword arguments:
+        :param mess:    string
+
+        :returns:       list of strings
         """
         if type(mess) is not str:
             mess = str(mess)
@@ -328,4 +530,4 @@ if __name__ == '__main__':
     # ml.save_classifier()
     ml.predict()
     #ml.save_as_doc()
-    # ml.save_as_txt()
+    #ml.save_as_txt()
