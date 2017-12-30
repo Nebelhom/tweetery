@@ -417,8 +417,8 @@ class TweetCollector(object):
 if __name__ == '__main__':
     tw = TweetCollector(feedfile='example_feeds.csv')
     tw.get_tweets()
-    #tw.to_CSV(csvname='example_tweets.csv', overwrite=True,
-    #          extend_existing=False)
-    #tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True,
-    #          extend_existing=True)
-    #tw.update_feeds_csv(fname='example_feeds.csv')
+    tw.to_CSV(csvname='example_tweets.csv', overwrite=True,
+              extend_existing=False)
+    tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True,
+              extend_existing=True)
+    tw.update_feeds_csv(fname='example_feeds.csv')
