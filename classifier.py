@@ -201,7 +201,8 @@ class Tweet_Classifier(object):
             print('Report saved in {}'.format(osp.abspath(fname)))
             return
 
-    def save_as_doc(self, fname='report{}.docx'.format(TODAY),   doc_title='Tweet Report{}'.format(TODAY), cut_off=0.25):
+    def save_as_doc(self, fname='report{}.docx'.format(TODAY),
+                    doc_title='Tweet Report{}'.format(TODAY), cut_off=0.25):
         """
         Saves the classification outcome as a text of tweet | Relevance.
 
@@ -326,6 +327,5 @@ if __name__ == '__main__':
     # Commented out so that hyperparam.pkl does not always change on commit
     # ml.save_classifier()
     ml.predict()
-    ml.extend_training_set(training_data_fpath='')
     #ml.save_as_doc()
     # ml.save_as_txt()
