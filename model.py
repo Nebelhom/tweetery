@@ -1,5 +1,6 @@
 #!usr/bin/python
 
+import datetime
 import os
 import os.path as osp
 from pathlib import Path
@@ -19,14 +20,13 @@ from sklearn.pipeline import Pipeline
 
 import docx
 from docx.shared import Cm, Inches
+from hyperlink import add_hyperlink
+
 # https://pypi.python.org/pypi/emoji/
 import emoji
 
-"""
-TODO:
-- Output as report
 
-"""
+TODAY = datetime.date.today()
 
 
 class Tweet_Classifier(object):
@@ -197,7 +197,7 @@ class Tweet_Classifier(object):
                         protocol=4)
             print('Hyperparameters of Classifier saved.')
 
-    def save_as_txt(self, fname='report.txt', cut_off=0.25):
+    def save_as_txt(self, fname='report{}.txt'.format(TODAY), cut_off=0.25):
         """
         Saves the classification outcome as a text of tweet | Relevance.
         """
@@ -215,8 +215,6 @@ class Tweet_Classifier(object):
                                                       '===', '===='))
                 rel = self.assembled.sort_values(by='probability',
                                                  ascending=False)
-                # Example URL
-                # https://twitter.com/ThePSF/status/946833230325481474
 
                 # columns are 'since_id', 'created_at', 'tweet', 'feed',
                 # 'interesting', 'probability',
@@ -230,10 +228,14 @@ class Tweet_Classifier(object):
             print('Report saved in {}'.format(osp.abspath(fname)))
             return
 
-    def save_as_doc(self, fname='report.docx', doc_title='Tweet Report',
+    def save_as_doc(self, fname='report{}.docx'.format(TODAY), doc_title='Tweet Report',
                     cut_off=0.25):
         """
         Saves the classification outcome as a text of tweet | Relevance.
+
+        Add cols: URL and Date
+        Include Hyperlinks inside tweets
+        Show Feed as feed with hyperlink to tweet
 
         """
 
@@ -241,6 +243,11 @@ class Tweet_Classifier(object):
             run = cell.paragraphs[0].runs[0]
             font = run.font
             font.bold = True
+            return
+
+        def make_hyperlink(cell, url, text, color=None, underline=True):
+            p = cell.paragraphs[0]
+            hyperlink = add_hyperlink(p, url, text, None, True)
             return
 
         def set_col_widths(table, col_widths):
@@ -267,9 +274,11 @@ class Tweet_Classifier(object):
             # Create the template
             doc.add_heading(doc_title, 0)
 
-            table = doc.add_table(rows=1, cols=2)
+            # Create table
+            table = doc.add_table(rows=1, cols=4)
             table.autofit = False
 
+            # Header Cells
             hdr_cells = table.rows[0].cells
             hdr_cells[0].text = 'Relevance'
             make_bold(hdr_cells[0])
@@ -277,16 +286,30 @@ class Tweet_Classifier(object):
             hdr_cells[1].text = 'Tweet'
             make_bold(hdr_cells[1])
 
-            rel = self.assembled[['probability',
-                               'text']].sort_values(by='probability',
-                                                    ascending=False)
-            for prob, line in rel.values:
+            hdr_cells[2].text = 'Feed / Link'
+            make_bold(hdr_cells[2])
+
+            hdr_cells[3].text = 'Date'
+            make_bold(hdr_cells[3])
+
+            # Body of Table
+            rel = self.assembled.sort_values(by='probability',
+                                             ascending=False)
+
+            # columns are 'since_id', 'created_at', 'tweet', 'feed',
+            # 'interesting', 'probability',
+            for since_id, date, tweet, feed, clf, prob in rel.values:
                 if prob >= cut_off:
+                    url = 'https://twitter.com/{feed}/status/{since_id}'\
+                        .format(feed=feed, since_id=since_id)
                     row_cells = table.add_row().cells
                     row_cells[0].text = '{:7.2f}%'.format(prob * 100)
-                    row_cells[1].text = line
+                    row_cells[1].text = tweet
+                    row_cells[2].text = ''
+                    make_hyperlink(row_cells[2], url, feed)
+                    row_cells[3].text = str(date)[:11]
 
-            set_col_widths(table, (Inches(1.1), Inches(4.9)))
+            set_col_widths(table, (Inches(1.06), Inches(3.0), Inches(0.88), Inches(1.06)))
 
             doc.save(fname)
             print('Report saved in {}'.format(osp.abspath(fname)))
@@ -300,5 +323,5 @@ if __name__ == '__main__':
     # Commented out so that hyperparam.pkl does not always change on commit
     # ml.save_classifier()
     ml.predict()
-    # ml.save_as_doc()
-    ml.save_as_txt()
+    ml.save_as_doc()
+    # ml.save_as_txt()
