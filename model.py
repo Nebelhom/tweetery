@@ -1,5 +1,6 @@
 #!usr/bin/python
 
+import datetime
 import os
 import os.path as osp
 from pathlib import Path
@@ -17,24 +18,28 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
 
+import docx
+from docx.shared import Cm, Inches
+from hyperlink import add_hyperlink
+
 # https://pypi.python.org/pypi/emoji/
 import emoji
 
-"""
-TODO:
-- Output as report
 
-"""
+TODAY = datetime.date.today()
 
 
-class Text_Classifier(object):
+class Tweet_Classifier(object):
     """
+    add_clf_info - additional information on the tweet such as feed, data, since_id, etc
     """
-    def __init__(self, clf_text, train_X=None, train_y=None, ignore_saved=False):
+    def __init__(self, data, train_X=None, train_y=None, ignore_saved=False):
         """
         self._dest = path to data directory
         self._clf_path = path to pickled classifier
         self._hyperparams = path to pre-saved hyperparams
+
+        self.data - pd.DataFrame with columns since_id  created_at  tweet   feed
         """
         # Paths
         self._dest = osp.join(os.getcwd(), 'data')
@@ -48,14 +53,16 @@ class Text_Classifier(object):
         self.clf = self.create_classifier(train_X, train_y,
                                           ignore_saved_model=ignore_saved)
 
+        self.data = data
+
         # Pandas Series or None
-        self.clf_text = clf_text
+        self.clf_text = self.data['tweet']
         # Pandas series or None
         self.prediction = None
         # Pandas series or None
         self.proba = None
-        # Pandas Dataframe of clf_text & prediction or None
-        self.paired = None
+        # Pandas Dataframe of all info or None
+        self.assembled = None
 
     def text_process(self, mess):
         """
@@ -135,7 +142,13 @@ class Text_Classifier(object):
 
         clf = None
 
-        if full_calibration:
+        if Path(self._hyperparams).is_file() and not full_calibration:
+            param_grid = joblib.load(open(self._hyperparams, 'rb'))
+            pipe.set_params(**param_grid)
+            pipe.fit(X_train, y_train)
+            clf = pipe
+
+        else:
             param_grid = [
                 {'vect__ngram_range': [(1, 1), (2, 2), (1, 2)],
                  'vect__use_idf': [False, True],
@@ -148,12 +161,6 @@ class Text_Classifier(object):
             grid.fit(X_train, y_train)
             clf = grid.best_estimator_
 
-        else:
-            param_grid = joblib.load(open(self._hyperparams, 'rb'))
-            pipe.set_params(**param_grid)
-            pipe.fit(X_train, y_train)
-            clf = pipe
-
         return clf
 
     def predict(self, pref_prob=1):
@@ -162,10 +169,14 @@ class Text_Classifier(object):
         """
 
         self.prediction = self.clf.predict(self.clf_text)
+        # print(self.prediction)
         self.proba = self.clf.predict_proba(self.clf_text)
-        self.paired = pd.DataFrame({'text': self.clf_text,
-                                    'interesting': self.prediction,
-                                    'probability': self.proba[:, pref_prob]})
+        # print(self.proba)
+        a = pd.DataFrame({'tweet': self.clf_text,
+                          'interesting': self.prediction,
+                          'probability': self.proba[:, pref_prob]})
+        self.assembled = pd.merge(self.data, a, how='outer', left_on='tweet',
+                                  right_on='tweet')
 
     def save_classifier(self):
         """
@@ -186,24 +197,121 @@ class Text_Classifier(object):
                         protocol=4)
             print('Hyperparameters of Classifier saved.')
 
-    def save_as_txt(self, fname='report.txt', cut_off=0.25):
+    def save_as_txt(self, fname='report{}.txt'.format(TODAY), cut_off=0.25):
         """
         Saves the classification outcome as a text of tweet | Relevance.
         """
         if self.prediction is None or self.proba is None or \
-                self.paired is None:
+                self.assembled is None:
             print('No classification has taken place. Please',
                   ' re-use this method after classification has taken place')
             return
 
         else:
             with open(fname, 'w') as f:
-                f.write('{:12s}\t{}\n'.format('Relevance', 'Text'))
-                f.write('{:12s}\t{}\n'.format('=========', '===='))
-                rel = self.paired[['probability', 'text']].sort_values(by='probability', ascending=False)
-                for prob, line in rel.values:
+                f.write('{:12s}\t{}\t{}\t{}\n'.format('Relevance', 'Text',
+                                                      'URL', 'Date'))
+                f.write('{:12s}\t{}\t{}\t{}\n'.format('=========', '====',
+                                                      '===', '===='))
+                rel = self.assembled.sort_values(by='probability',
+                                                 ascending=False)
+
+                # columns are 'since_id', 'created_at', 'tweet', 'feed',
+                # 'interesting', 'probability',
+                for since_id, date, tweet, feed, clf, prob in rel.values:
                     if prob >= cut_off:
-                        f.write('{:7.2f}%\t{}\n'.format(prob*100, line))
+                        url = 'https://twitter.com/{feed}/status/{since_id}'\
+                            .format(feed=feed, since_id=since_id)
+                        f.write('{:7.2f}%\t{tweet}\t{url}\t{date}\n'
+                                .format(prob * 100, tweet=tweet, url=url,
+                                        date=date))
+            print('Report saved in {}'.format(osp.abspath(fname)))
+            return
+
+    def save_as_doc(self, fname='report{}.docx'.format(TODAY), doc_title='Tweet Report',
+                    cut_off=0.25):
+        """
+        Saves the classification outcome as a text of tweet | Relevance.
+
+        Add cols: URL and Date
+        Include Hyperlinks inside tweets
+        Show Feed as feed with hyperlink to tweet
+
+        """
+
+        def make_bold(cell):
+            run = cell.paragraphs[0].runs[0]
+            font = run.font
+            font.bold = True
+            return
+
+        def make_hyperlink(cell, url, text, color=None, underline=True):
+            p = cell.paragraphs[0]
+            hyperlink = add_hyperlink(p, url, text, None, True)
+            return
+
+        def set_col_widths(table, col_widths):
+            """
+            Sets the widths of columns of table
+
+            table = docx.Table() instance
+            col_widths = iterable of ints (width in EMUs)
+                         Helper functions like Cm() or Inches() help
+            """
+            for col, width in zip(table.columns, col_widths):
+                col.width = width
+            return
+
+        if self.prediction is None or self.proba is None or \
+                self.assembled is None:
+            print('No classification has taken place. Please',
+                  ' re-use this method after classification has taken place')
+            return
+
+        else:
+            doc = docx.Document()
+
+            # Create the template
+            doc.add_heading(doc_title, 0)
+
+            # Create table
+            table = doc.add_table(rows=1, cols=4)
+            table.autofit = False
+
+            # Header Cells
+            hdr_cells = table.rows[0].cells
+            hdr_cells[0].text = 'Relevance'
+            make_bold(hdr_cells[0])
+
+            hdr_cells[1].text = 'Tweet'
+            make_bold(hdr_cells[1])
+
+            hdr_cells[2].text = 'Feed / Link'
+            make_bold(hdr_cells[2])
+
+            hdr_cells[3].text = 'Date'
+            make_bold(hdr_cells[3])
+
+            # Body of Table
+            rel = self.assembled.sort_values(by='probability',
+                                             ascending=False)
+
+            # columns are 'since_id', 'created_at', 'tweet', 'feed',
+            # 'interesting', 'probability',
+            for since_id, date, tweet, feed, clf, prob in rel.values:
+                if prob >= cut_off:
+                    url = 'https://twitter.com/{feed}/status/{since_id}'\
+                        .format(feed=feed, since_id=since_id)
+                    row_cells = table.add_row().cells
+                    row_cells[0].text = '{:7.2f}%'.format(prob * 100)
+                    row_cells[1].text = tweet
+                    row_cells[2].text = ''
+                    make_hyperlink(row_cells[2], url, feed)
+                    row_cells[3].text = str(date)[:11]
+
+            set_col_widths(table, (Inches(1.06), Inches(3.0), Inches(0.88), Inches(1.06)))
+
+            doc.save(fname)
             print('Report saved in {}'.format(osp.abspath(fname)))
             return
 
@@ -211,8 +319,9 @@ class Text_Classifier(object):
 if __name__ == '__main__':
     clf = pd.read_excel('example_tweets.xlsx')
     df = pd.read_excel('training_data.xlsx')
-    ml = Text_Classifier(clf['tweet'], df['tweet'], df['interesting'])
+    ml = Tweet_Classifier(clf, train_X=df['tweet'], train_y=df['interesting'])
     # Commented out so that hyperparam.pkl does not always change on commit
     # ml.save_classifier()
     ml.predict()
-    ml.save_as_txt()
+    ml.save_as_doc()
+    # ml.save_as_txt()
