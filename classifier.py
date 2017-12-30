@@ -4,7 +4,6 @@ import datetime
 import os
 import os.path as osp
 from pathlib import Path
-from sklearn.externals import joblib
 import string
 
 import pandas as pd
@@ -15,6 +14,7 @@ from nltk.stem.snowball import SnowballStemmer
 
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.linear_model import LogisticRegression
+from sklearn.externals import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
 
@@ -33,7 +33,7 @@ class Tweet_Classifier(object):
     """
     add_clf_info - additional information on the tweet such as feed, data, since_id, etc
     """
-    def __init__(self, data, train_X=None, train_y=None, ignore_saved=False):
+    def __init__(self, data, train=None, ignore_saved=False):
         """
         self._dest = path to data directory
         self._clf_path = path to pickled classifier
@@ -46,14 +46,17 @@ class Tweet_Classifier(object):
         self._clf_path = osp.join(self._dest, 'classifier.pkl')
         self._hyperparams = osp.join(self._dest, 'hyperparams.pkl')
 
+        # information fed into class
+        self.data = data
+        self.train_set = train
+
         # Adjust to a property function based on ending either csv or xlsx
         self.tfidf = TfidfVectorizer(analyzer=self.text_process,
                                      ngram_range=(1, 1))
 
-        self.clf = self.create_classifier(train_X, train_y,
+        self.clf = self.create_classifier(train['tweet'],
+                                          train['interesting'],
                                           ignore_saved_model=ignore_saved)
-
-        self.data = data
 
         # Pandas Series or None
         self.clf_text = self.data['tweet']
@@ -63,36 +66,6 @@ class Tweet_Classifier(object):
         self.proba = None
         # Pandas Dataframe of all info or None
         self.assembled = None
-
-    def text_process(self, mess):
-        """
-        Takes in a string of text, then performs the following:
-        1. Remove all punctuation
-        2. Remove all stopwords
-        3. Returns a list of the cleaned text
-        """
-        if type(mess) is not str:
-            mess = str(mess)
-
-        # Check characters to see if they are in punctuation
-        nopunc = [char for char in mess
-                  if char not in string.punctuation + "–"]
-
-        # Check if char is an emoji
-        noemoji = [char for char in nopunc
-                   if char not in emoji.UNICODE_EMOJI.keys()]
-
-        # Join the characters again to form the string.
-        nopunc = ''.join(noemoji)
-
-        # Now just remove any stopwords
-        no_stop = [word for word in nopunc.split() if word.lower() not in
-                   stopwords.words('english') if 'http' not in word.lower()]
-
-        # Stemming
-        snowball = SnowballStemmer('english')
-
-        return [snowball.stem(word) for word in no_stop]
 
     def create_classifier(self, X=None, y=None, ignore_saved_model=False):
         """
@@ -228,8 +201,8 @@ class Tweet_Classifier(object):
             print('Report saved in {}'.format(osp.abspath(fname)))
             return
 
-    def save_as_doc(self, fname='report{}.docx'.format(TODAY), doc_title='Tweet Report',
-                    cut_off=0.25):
+    def save_as_doc(self, fname='report{}.docx'.format(TODAY),
+                    doc_title='Tweet Report{}'.format(TODAY), cut_off=0.25):
         """
         Saves the classification outcome as a text of tweet | Relevance.
 
@@ -309,19 +282,50 @@ class Tweet_Classifier(object):
                     make_hyperlink(row_cells[2], url, feed)
                     row_cells[3].text = str(date)[:11]
 
-            set_col_widths(table, (Inches(1.06), Inches(3.0), Inches(0.88), Inches(1.06)))
+            set_col_widths(table, (Inches(1.06), Inches(3.0), Inches(0.88),
+                                   Inches(1.06)))
 
             doc.save(fname)
             print('Report saved in {}'.format(osp.abspath(fname)))
             return
 
+    def text_process(self, mess):
+        """
+        Takes in a string of text, then performs the following:
+        1. Remove all punctuation
+        2. Remove all stopwords
+        3. Returns a list of the cleaned text
+        """
+        if type(mess) is not str:
+            mess = str(mess)
+
+        # Check characters to see if they are in punctuation
+        nopunc = [char for char in mess
+                  if char not in string.punctuation + "–"]
+
+        # Check if char is an emoji
+        noemoji = [char for char in nopunc
+                   if char not in emoji.UNICODE_EMOJI.keys()]
+
+        # Join the characters again to form the string.
+        nopunc = ''.join(noemoji)
+
+        # Now just remove any stopwords
+        no_stop = [word for word in nopunc.split() if word.lower() not in
+                   stopwords.words('english') if 'http' not in word.lower()]
+
+        # Stemming
+        snowball = SnowballStemmer('english')
+
+        return [snowball.stem(word) for word in no_stop]
+
 
 if __name__ == '__main__':
     clf = pd.read_excel('example_tweets.xlsx')
     df = pd.read_excel('training_data.xlsx')
-    ml = Tweet_Classifier(clf, train_X=df['tweet'], train_y=df['interesting'])
+    ml = Tweet_Classifier(clf, train=df)
     # Commented out so that hyperparam.pkl does not always change on commit
     # ml.save_classifier()
     ml.predict()
-    ml.save_as_doc()
+    #ml.save_as_doc()
     # ml.save_as_txt()

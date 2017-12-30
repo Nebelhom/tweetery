@@ -91,13 +91,15 @@ class TweetCollector(object):
         self.ex_repl = exclude_replies
         self.rts = include_rts
 
-        self.tweets = self.get_tweets()
+        # Will be populated when get_tweets is called
+        self.tweets = None
 
     def get_tweets(self):
         """
         Download and accumulate tweets from multiple feeds.
 
-        :returns:   Pandas DataFrame with columns:
+        :returns:   Side-effect- no real return - passed into self.tweets
+                    Pandas DataFrame with columns:
                     since_id    -- string of numbers corresponding to tweet
                                    status id
                     created_at  -- string in date format of posting time,
@@ -112,7 +114,7 @@ class TweetCollector(object):
                                     self.rts)
             alltweets.append(tweets)
 
-        return pd.concat(alltweets)
+        self.tweets = pd.concat(alltweets)
 
     def _download(self, feed, since_id, count=200, exclude_replies=True,
                   include_rts=True):
@@ -414,6 +416,7 @@ class TweetCollector(object):
 
 if __name__ == '__main__':
     tw = TweetCollector(feedfile='example_feeds.csv')
+    tw.get_tweets()
     #tw.to_CSV(csvname='example_tweets.csv', overwrite=True,
     #          extend_existing=False)
     #tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True,
