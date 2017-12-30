@@ -2,7 +2,8 @@
 
 import numpy as np
 import pandas as pd
-import os.path
+import os
+import os.path as osp
 import tweepy
 
 # Keys may otherwise not be properly displayed
@@ -74,13 +75,15 @@ class TweetCollector(object):
     def __init__(self, feedfile='feeds.csv', keyfile='keys.csv',
                  count=200, include_rts=True, exclude_replies=True):
 
-        kd = pd.read_csv(keyfile)
+        self._dest = osp.join(os.getcwd(), 'user_data')
+
+        kd = pd.read_csv(osp.join(self._dest, keyfile))
         self.ckey = kd[kd['key'] == 'ckey']['value'].to_string(index=False)
 
         self.csecret = kd[kd['key'] == 'csecret']['value'].to_string(
             index=False)
 
-        self.feeds = pd.read_csv(feedfile)
+        self.feeds = pd.read_csv(osp.join(self._dest, feedfile))
         self.columns = ['since_id', 'created_at', 'tweet', 'feed']
 
         # Used in get_tweets and _download
@@ -199,10 +202,10 @@ class TweetCollector(object):
         checking = True
         i = 1
         while checking:
-            if os.path.exists(fname):
+            if osp.exists(fname):
                 new = fname.split('.')
                 new[-2] = new[-2] + str(i)
-                if os.path.exists('.'.join(new)):
+                if osp.exists('.'.join(new)):
                     i += 1
                 else:
                     return '.'.join(new)
@@ -411,8 +414,8 @@ class TweetCollector(object):
 
 if __name__ == '__main__':
     tw = TweetCollector(feedfile='example_feeds.csv')
-    tw.to_CSV(csvname='example_tweets.csv', overwrite=True,
-              extend_existing=False)
-    tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True,
-              extend_existing=True)
-    tw.update_feeds_csv(fname='example_feeds.csv')
+    #tw.to_CSV(csvname='example_tweets.csv', overwrite=True,
+    #          extend_existing=False)
+    #tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True,
+    #          extend_existing=True)
+    #tw.update_feeds_csv(fname='example_feeds.csv')

@@ -9,7 +9,7 @@ TweetCollector class collects tweets from a set of pre-defined feeds using the t
 * [Pandas Library](https://pandas.pydata.org/)
 
 ## Feeds
-The feeds are based on a defined file. The default being 'feeds.csv' in the same folder, but can be defined according to your needs.
+The feeds are based on a defined file. The default being 'feeds.csv' in the user_data folder, but can be defined according to your needs. It is, however, important that you place it in the '''user_data''' directory.
 
 ### Structure of feed file (csv format)
 ```
@@ -20,10 +20,10 @@ feed_2,933644665072603137
 ```
 
 ## Twitter App
-A twitter app account is necessary for the class to work correctly. Parameters are to be defined in a csv file (path default 'keys.csv').
+A twitter app account is necessary for the class to work correctly. Parameters are to be defined in a csv file (path default 'user_data/keys.csv').
 
 ### Structure of keys file for twitter app (csv file)
-As these parameters are to be kept secret, there is no key.csv file given by default.
+As these parameters are to be kept secret, there is no key.csv file given by default. Again it is, however, important that you place it in the '''user_data''' directory.
 
 ```
 key,value
