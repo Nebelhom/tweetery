@@ -75,10 +75,10 @@ class TweetCollector(object):
 
     """
 
-    def __init__(self, feedfile='feeds.csv', keyfile='keys.csv',
+    def __init__(self, feedfile='feeds.csv', keyfile='user_data/keys.csv',
                  count=200, include_rts=True, exclude_replies=True):
 
-        self._dest = osp.join(os.getcwd(), 'user_data')
+        self._dest = osp.join(os.getcwd())
 
         kd = pd.read_csv(osp.join(self._dest, keyfile))
         self.ckey = kd[kd['key'] == 'ckey']['value'].to_string(index=False)
@@ -231,7 +231,8 @@ class TweetCollector(object):
             else:
                 return fname
 
-    def to_CSV(self, csvname='', tweets=None, extend_existing=False, overwrite=False):
+    def to_CSV(self, csvname='', tweets=None, extend_existing=False,
+               overwrite=False):
         """
         Writes self.tweets to CSV format.
 
@@ -313,7 +314,8 @@ class TweetCollector(object):
         # Close the Pandas Excel writer and output the Excel file.
         writer.save()
 
-    def to_XLS(self, xlsname='', tweets=None, extend_existing=False, overwrite=False):
+    def to_XLS(self, xlsname='', tweets=None, extend_existing=False,
+               overwrite=False):
         """
         Writes self.tweets to XLS or XLSX format.
 
@@ -322,8 +324,8 @@ class TweetCollector(object):
                                 new filename created.
         :param tweets:          Pandas DataFrame - Tweets to be saved
                                 To be able to save an extended file
-                                the columns of tweets and the DataFrame from xlsname
-                                have to equal each other
+                                the columns of tweets and the DataFrame from
+                                xlsname have to equal each other
         :param extend_existing: boolean, default False - If True, extends
                                 existing csv file
         :param overwrite:       boolean, default False - If True, overwrites
@@ -451,5 +453,5 @@ if __name__ == '__main__':
     #          extend_existing=False)
     #tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True,
     #          extend_existing=True)
-    #tw.update_feeds_csv(fname='example_feeds.csv')
+    tw.update_feeds_csv(fname='example_feeds.csv')
 
