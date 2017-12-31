@@ -1,30 +1,11 @@
 #!usr/bin/python
 
-"""
-Combine the two to create a regularised workflow.
-
-1. Download tweets with collector
-2. train the model with classifier
-3. classify tweets
-4. write and save a report
-5. extend training_set and suggest to re-check if correct classification
-6. Suggest to recalibrate on a regular basis
-
-What have I done in this commit.classifier
-main.py
-
-rewrote to_XLS and to_CSV to allow for other tweets to be saved, too
-
-changed get_tweets to download_tweets
-
-and added get_tweets function to return the tweets as pandas DataFrame
-
-"""
 import pandas as pd
 import numpy as np
 
 from collector import TweetCollector
 from classifier import Tweet_Classifier
+
 
 if __name__ == '__main__':
     # Instantiate TweetCollector
