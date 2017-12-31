@@ -138,7 +138,7 @@ class Tweet_Classifier(object):
         Returns a fully trained Logistic Regression model ready to be used
         for predictions.
         Exception: In case there are no pickled classifier, no hyperparameters
-        and no training data supplied, None is returned. 
+        and no training data supplied, None is returned.
 
         Keyword arguments:
         :param X:                   Pandas Series - Collection of Tweets
@@ -270,6 +270,28 @@ class Tweet_Classifier(object):
         self.assembled = pd.merge(self.data, a, how='outer', left_on='tweet',
                                   right_on='tweet')
 
+    def get_prediction(self):
+        """
+        Return the Pandas DataFrame containing the tweets as well as the
+        predictions or None if no prediction has been done.
+
+        :returns:           None or
+
+                            self.assembled set to Pandas DataFrame
+                            Pandas DataFrame with Columns
+                            since_id    -- string of numbers corresponding
+                                           to tweet status id
+                            created_at  -- string in date format of posting
+                                           time, e.g. 2017-12-06 16:37:49
+                            tweet       -- string of tweet
+                            feed        -- string of name of twitter feed
+                            interesting -- int signifying interesting or not
+                            probability -- numpy.float of probability of
+                                           interesting
+        """
+
+        return self.assembled
+
     def save_classifier(self):
         """
         Saves classification model and the respective hyperparameters as pickle
@@ -375,10 +397,10 @@ class Tweet_Classifier(object):
         def make_bold(cell):
             """
             Puts text content of cell in bold
-                                    
+
             Keyword arguments:
             :param cell:    cell of table
-    
+
             :returns:       None
             """
 
@@ -390,7 +412,7 @@ class Tweet_Classifier(object):
         def make_hyperlink(cell, url, text, color=None, underline=True):
             """
             Adds a text with hyperlink_url into cell of table.
-                                    
+
             Keyword arguments:
             :param cell:        docx.Table._cell of table
             :param url:         string  - url for hyperlink
@@ -399,7 +421,7 @@ class Tweet_Classifier(object):
             :param color:       string  - hex of color
                                 (default: None)
             :param underline:   boolean - flag: underline hyperlink
-    
+
             :returns:       None
             """
 
@@ -415,14 +437,13 @@ class Tweet_Classifier(object):
             col_widths = iterable of ints (width in EMUs)
                          Helper functions like Cm() or Inches() help
             Description
-                                    
+
             Keyword arguments:
             :param table:       docx.Table object
             :param col_widths:  list/tuple of int - widths in EMUs
                                 Helper functions like Cm() or Inches() help
-    
-            :returns:           None
 
+            :returns:           None
             """
 
             for col, width in zip(table.columns, col_widths):
