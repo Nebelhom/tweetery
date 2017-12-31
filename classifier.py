@@ -12,8 +12,10 @@ import numpy as np
 from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 
-from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import (GridSearchCV, StratifiedKFold,
+                                     train_test_split)
+from sklearn.metrics import f1_score, make_scorer
 from sklearn.externals import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
@@ -39,7 +41,7 @@ Keyword arguments:
 TODAY = datetime.date.today()
 
 
-class Tweet_Classifier(object):
+class TweetClassifier(object):
     """
     Tweet_Classifier classifies tweets into interesting and not interesting
     based on a Logistic Regression model.
@@ -102,7 +104,8 @@ class Tweet_Classifier(object):
         Converts string into list of bag of words.
     """
 
-    def __init__(self, data, train=None, ignore_saved=False):
+    def __init__(self, data, train=None, ignore_saved=False,
+                 full_calibration=False):
 
         # Paths
         # path to data directory
@@ -115,6 +118,7 @@ class Tweet_Classifier(object):
         # information fed into class
         self.data = data
         self.train_set = train
+        self.full_cal = full_calibration
 
         # Adjust to a property function based on ending either csv or xlsx
         self.tfidf = TfidfVectorizer(analyzer=self.text_process,
@@ -163,7 +167,7 @@ class Tweet_Classifier(object):
                   'classifier is being calibrated...')
 
             if X is not None and y is not None:
-                clf = self.calibrate(X, y)
+                clf = self.calibrate(X, y, full_calibration=self.full_cal)
                 print('Classifier has been calibrated.')
                 return clf
 
@@ -199,21 +203,23 @@ class Tweet_Classifier(object):
                                         ('clf', LogisticRegression())
         """
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y,
-                                                            test_size=0.33,
-                                                            random_state=42)
         tfidf = TfidfVectorizer(analyzer=self.text_process)
         pipe = Pipeline([
             ('vect', tfidf),
             ('clf', LogisticRegression())
         ])
 
+        # F1 score is measured for the 1 label, as it is more interesting
+        # to have all interesting tweets correct, than some uninteresting
+        # ones mislabelled
+        scorer = make_scorer(f1_score, pos_label=1)
+
         clf = None
 
         if Path(self._hyperparams).is_file() and not full_calibration:
             param_grid = joblib.load(open(self._hyperparams, 'rb'))
             pipe.set_params(**param_grid)
-            pipe.fit(X_train, y_train)
+            pipe.fit(X, y)
             clf = pipe
 
         else:
@@ -224,9 +230,10 @@ class Tweet_Classifier(object):
                  'clf__C': [0.1, 1.0, 10.0, 100.0]
                  }
             ]
-            grid = GridSearchCV(pipe, param_grid, scoring='accuracy',
-                                cv=10, verbose=10, n_jobs=-1)
-            grid.fit(X_train, y_train)
+            grid = GridSearchCV(pipe, param_grid, scoring=scorer,
+                                cv=10,
+                                verbose=10, n_jobs=-1)
+            grid.fit(X, y)
             clf = grid.best_estimator_
 
         return clf
@@ -545,10 +552,11 @@ class Tweet_Classifier(object):
 
 if __name__ == '__main__':
     clf = pd.read_excel('example_tweets.xlsx')
-    df = pd.read_excel('training_data.xlsx')
-    ml = Tweet_Classifier(clf, train=df)
+    df = pd.read_excel('Training Data.xlsx')
+    tc = TweetClassifier(clf, train=df, ignore_saved=True,
+                          full_calibration=True)
     # Commented out so that hyperparam.pkl does not always change on commit
-    # ml.save_classifier()
-    ml.predict()
-    #ml.save_as_doc()
-    #ml.save_as_txt()
+    tc.save_classifier()
+    #tc.predict()
+    #tc.save_as_doc()
+    #tc.save_as_txt()

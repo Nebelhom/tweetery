@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 from collector import TweetCollector
-from classifier import Tweet_Classifier
+from classifier import TweetClassifier
 
 
 if __name__ == '__main__':
@@ -22,14 +22,19 @@ if __name__ == '__main__':
 
     # Get tweets to be classified
     clf = tw.get_tweets()
+
     # Load training data. If Classifier is already saved, there is no need
     df = pd.read_excel('Training Data.xlsx')
-    # Instantiate Tweet_Classifier
-    tc = Tweet_Classifier(clf, train=df)
+
+    # Instantiate TweetClassifier
+    tc = TweetClassifier(clf, train=df)
+
     # Save the trained classifier
     tc.save_classifier()
+
     # Predict the downloaded tweets
     tc.predict()
+
     # Save them as report
     tc.save_as_doc()
     tc.save_as_txt()
