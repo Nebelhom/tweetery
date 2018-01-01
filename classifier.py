@@ -123,7 +123,7 @@ class TweetClassifier(object):
         # information fed into class
         self.data = data
         self.train_set = train
-        self.X_train, self.y_train, self.X_test, self.y_test = \
+        self.X_train, self.X_test, self.y_train, self.y_test = \
             train_test_split(train['tweet'], train['interesting'],
                              test_size=0.33, random_state=42)
 
@@ -308,16 +308,10 @@ class TweetClassifier(object):
         if y_test is None:
             y_test = self.y_test
 
-
-        # if self.prediction is None or self.proba is None or \
-        #        self.assembled is None:
-        #    print('No classification has taken place. Please',
-        #          ' re-use this method after classification has taken place')
-        #    return
-
-        # else:
         prediction = self.clf.predict(X_test)
 
+        # print('Best Score: ', self.clf.best_score_)
+        print('\n')
         print(confusion_matrix(prediction, y_test))
         print('\n')
         print(classification_report(prediction, y_test))
@@ -599,11 +593,11 @@ class TweetClassifier(object):
 if __name__ == '__main__':
     clf = pd.read_excel('example_tweets.xlsx')
     df = pd.read_excel('Training Data.xlsx')
-    tc = TweetClassifier(clf, train=df, ignore_saved=True)#,
-                          #full_calibration=True)
+    tc = TweetClassifier(clf, train=df, ignore_saved=True) #,
+                        # full_calibration=True)
     tc.print_accuracy()
     # Commented out so that hyperparam.pkl does not always change on commit
-    #tc.save_classifier()
-    #tc.predict()
-    #tc.save_as_doc()
-    #tc.save_as_txt()
+    # tc.save_classifier()
+    tc.predict()
+    tc.save_as_doc()
+    tc.save_as_txt()
