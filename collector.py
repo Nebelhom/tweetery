@@ -6,13 +6,10 @@ import os
 import os.path as osp
 import tweepy
 
+from errors import ZeroTweetsException
+
 # Keys may otherwise not be properly displayed
 pd.set_option("display.max_colwidth", 999)
-
-class ZeroTweetsException(Exception):
-    print('There were no new tweets to be downloaded. ',
-          'The procedure will now be terminated...')
-    raise Exception
 
 
 class TweetCollector(object):
@@ -135,6 +132,15 @@ class TweetCollector(object):
             tweets = self._download(feed, since_id, self.count, self.ex_repl,
                                     self.rts)
             alltweets.append(tweets)
+
+        #print(alltweets)
+
+        # https://github.com/Nebelhom/tweetery/issues/61
+        # Tweepy downloads special chars fine except & --> as &amp;
+        alltweets = [tweet.replace('&amp;', '&') for tweet in alltweets]
+
+        #print(alltweets)
+        print(len(alltweets))
 
         if len(alltweets) >= 1:
             self.tweets = pd.concat(alltweets)
@@ -459,7 +465,7 @@ if __name__ == '__main__':
     tw.download_tweets()
     #tw.to_CSV(csvname='example_tweets.csv', overwrite=True,
     #          extend_existing=False)
-    #tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True,
-    #          extend_existing=True)
-    tw.update_feeds_csv(fname='example_feeds.csv')
+    tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True,
+              extend_existing=True)
+    # tw.update_feeds_csv(fname='example_feeds.csv')
 
