@@ -15,7 +15,8 @@ from nltk.stem.snowball import SnowballStemmer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import (GridSearchCV, StratifiedKFold,
                                      train_test_split)
-from sklearn.metrics import f1_score, make_scorer
+from sklearn.metrics import (f1_score, make_scorer, confusion_matrix,
+                             classification_report)
 from sklearn.externals import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
@@ -89,6 +90,10 @@ class TweetClassifier(object):
         Series of Tweets are interesting (numpy.array[,]) and the
         respective probabilites (numpy.array[[],]).
 
+    def check_accuracy(self, X_text, y_test)
+        Prints Confusion Matrix and Classification Report for the test split
+        after model has been fit.
+
     def save_classifier(self)
         Saves classification model and the respective hyperparameters as pickle
         file each using sklearn.joblib.dump.
@@ -118,14 +123,18 @@ class TweetClassifier(object):
         # information fed into class
         self.data = data
         self.train_set = train
+        self.X_train, self.y_train, self.X_test, self.y_test = \
+            train_test_split(train['tweet'], train['interesting'],
+                             test_size=0.33, random_state=42)
+
         self.full_cal = full_calibration
 
         # Adjust to a property function based on ending either csv or xlsx
         self.tfidf = TfidfVectorizer(analyzer=self.text_process,
                                      ngram_range=(1, 1))
 
-        self.clf = self.create_classifier(train['tweet'],
-                                          train['interesting'],
+        self.clf = self.create_classifier(self.X_train,
+                                          self.y_train,
                                           ignore_saved_model=ignore_saved)
 
         # Pandas Series or None
@@ -231,8 +240,7 @@ class TweetClassifier(object):
                  }
             ]
             grid = GridSearchCV(pipe, param_grid, scoring=scorer,
-                                cv=10,
-                                verbose=10, n_jobs=-1)
+                                cv=10, verbose=10, n_jobs=-1)
             grid.fit(X, y)
             clf = grid.best_estimator_
 
@@ -276,6 +284,44 @@ class TweetClassifier(object):
                           'probability': self.proba[:, pref_prob]})
         self.assembled = pd.merge(self.data, a, how='outer', left_on='tweet',
                                   right_on='tweet')
+
+    def print_accuracy(self, X_test=None, y_test=None):
+        """
+        Prints Confusion Matrix and Classification Report for the test split
+        after model has been fit.
+
+        Keyword arguments:
+        :param X_test:  Pandas Series of strings - The downloaded tweets
+
+        :param y_test:  Pandas Series of ints - 0 or 1s (interesting or not)
+
+        :returns:           None
+
+        :side-effects:  prints confusion matrix of prediction vs. actual
+                        test data.
+
+        """
+
+        if X_test is None:
+            X_test = self.X_test
+
+        if y_test is None:
+            y_test = self.y_test
+
+
+        # if self.prediction is None or self.proba is None or \
+        #        self.assembled is None:
+        #    print('No classification has taken place. Please',
+        #          ' re-use this method after classification has taken place')
+        #    return
+
+        # else:
+        prediction = self.clf.predict(X_test)
+
+        print(confusion_matrix(prediction, y_test))
+        print('\n')
+        print(classification_report(prediction, y_test))
+        return
 
     def get_prediction(self):
         """
@@ -553,10 +599,11 @@ class TweetClassifier(object):
 if __name__ == '__main__':
     clf = pd.read_excel('example_tweets.xlsx')
     df = pd.read_excel('Training Data.xlsx')
-    tc = TweetClassifier(clf, train=df, ignore_saved=True,
-                          full_calibration=True)
+    tc = TweetClassifier(clf, train=df, ignore_saved=True)#,
+                          #full_calibration=True)
+    tc.print_accuracy()
     # Commented out so that hyperparam.pkl does not always change on commit
-    tc.save_classifier()
+    #tc.save_classifier()
     #tc.predict()
     #tc.save_as_doc()
     #tc.save_as_txt()
