@@ -9,6 +9,11 @@ import tweepy
 # Keys may otherwise not be properly displayed
 pd.set_option("display.max_colwidth", 999)
 
+class ZeroTweetsException(Exception):
+    print('There were no new tweets to be downloaded. ',
+          'The procedure will now be terminated...')
+    raise Exception
+
 
 class TweetCollector(object):
     """
@@ -131,7 +136,10 @@ class TweetCollector(object):
                                     self.rts)
             alltweets.append(tweets)
 
-        self.tweets = pd.concat(alltweets)
+        if len(alltweets) >= 1:
+            self.tweets = pd.concat(alltweets)
+        else:
+            raise ZeroTweetsException()
 
     def _download(self, feed, since_id, count=200, exclude_replies=True,
                   include_rts=True):
