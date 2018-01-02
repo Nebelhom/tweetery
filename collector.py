@@ -133,15 +133,6 @@ class TweetCollector(object):
                                     self.rts)
             alltweets.append(tweets)
 
-        #print(alltweets)
-
-        # https://github.com/Nebelhom/tweetery/issues/61
-        # Tweepy downloads special chars fine except & --> as &amp;
-        alltweets = [tweet.replace('&amp;', '&') for tweet in alltweets]
-
-        #print(alltweets)
-        print(len(alltweets))
-
         if len(alltweets) >= 1:
             self.tweets = pd.concat(alltweets)
         else:
