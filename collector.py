@@ -6,13 +6,10 @@ import os
 import os.path as osp
 import tweepy
 
+from errors import ZeroTweetsException
+
 # Keys may otherwise not be properly displayed
 pd.set_option("display.max_colwidth", 999)
-
-class ZeroTweetsException(Exception):
-    print('There were no new tweets to be downloaded. ',
-          'The procedure will now be terminated...')
-    raise Exception
 
 
 class TweetCollector(object):
@@ -459,7 +456,7 @@ if __name__ == '__main__':
     tw.download_tweets()
     #tw.to_CSV(csvname='example_tweets.csv', overwrite=True,
     #          extend_existing=False)
-    #tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True,
-    #          extend_existing=True)
-    tw.update_feeds_csv(fname='example_feeds.csv')
+    tw.to_XLS(xlsname='example_tweets.xlsx', overwrite=True,
+              extend_existing=True)
+    # tw.update_feeds_csv(fname='example_feeds.csv')
 

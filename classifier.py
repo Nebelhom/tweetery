@@ -1,6 +1,7 @@
 #!usr/bin/python
 
 import datetime
+import html
 import os
 import os.path as osp
 from pathlib import Path
@@ -411,8 +412,12 @@ class TweetClassifier(object):
                         url = 'https://twitter.com/{feed}/status/{since_id}'\
                             .format(feed=feed, since_id=since_id)
                         f.write('{:7.2f}%\t{tweet}\t{url}\t{date}\n'
-                                .format(prob * 100, tweet=tweet, url=url,
-                                        date=date))
+                                .format(prob * 100,
+                                        # HTML Chars and Emojis otherwise not
+                                        # correctly shown
+                                        tweet=html.unescape(tweet),
+                                        url=url, date=date))
+
             print('Report saved in {}'.format(osp.abspath(fname)))
             return
 
@@ -539,7 +544,8 @@ class TweetClassifier(object):
                         .format(feed=feed, since_id=since_id)
                     row_cells = table.add_row().cells
                     row_cells[0].text = '{:7.2f}%'.format(prob * 100)
-                    row_cells[1].text = tweet
+                    # HTML Chars and Emojis otherwise not correctly shown
+                    row_cells[1].text = html.unescape(tweet)
                     row_cells[2].text = ''
                     make_hyperlink(row_cells[2], url, feed)
                     row_cells[3].text = str(date)[:11]
