@@ -1,5 +1,6 @@
 #!usr/bin/env python
 
+import html
 import numpy as np
 import pandas as pd
 import os
@@ -432,7 +433,7 @@ class TweetCollector(object):
             text = tweet.text
             full_text = text
 
-        return full_text
+        return html.unescape(full_text)
 
     def update_feeds_csv(self, fname='feeds.csv'):
         """
