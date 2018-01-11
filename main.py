@@ -1,11 +1,13 @@
 #!usr/bin/python
 
+import datetime
 import pandas as pd
 import numpy as np
 
 from collector import TweetCollector
 from classifier import TweetClassifier
 
+TODAY = datetime.date.today()
 
 if __name__ == '__main__':
     # Instantiate TweetCollector
@@ -38,6 +40,7 @@ if __name__ == '__main__':
     # Save them as report
     tc.save_as_doc()
     tc.save_as_txt()
+    tc.save_as_email(subject='Twitter Report {}'.format(TODAY))
 
     # Extend the existing training Data by the newly classified ones
     # It may be necessary to change some things manually if classification

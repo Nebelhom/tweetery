@@ -1,6 +1,9 @@
 #!usr/bin/python
 
 import datetime
+from email.mime.text import MIMEText
+from email.generator import Generator
+from email.header import Header
 import html
 import os
 import os.path as osp
@@ -557,6 +560,94 @@ class TweetClassifier(object):
             print('Report saved in {}'.format(osp.abspath(fname)))
             return
 
+    def save_as_email(self, subject='', sender='', receiver='',
+                      fname='report-{}.elm'.format(TODAY), cut_off=0.25):
+        """
+        Saves the classification outcome as a elm file.
+
+        Columns:
+        - Relevance as a percentage
+        - Tweet
+        - URL of tweet
+        - Date in format YYYY-MM-DD HH:MM:SS
+
+        Keyword arguments:
+        :param subject: string - Subject of the email
+        :param sender:  string - email address of sender
+        :param receiver:string or list - recipient address or list of address
+        :param fname:   string - filename or path to filename
+                        (default: reportYYYY-MM-DD.txt)
+        :param cut_off: float - percentage under which the tweet will be
+                        disregarded from the report (default: 0.25)
+
+        :returns:       type        -- description
+
+        :side-effects:  Saves a txt file under fname.
+        """
+
+        if self.prediction is None or self.proba is None or \
+                self.assembled is None:
+            print('No classification has taken place. Please',
+                  ' re-use this method after classification has taken place')
+            return
+
+        else:
+            htm = '''<!DOCTYPE html>
+                <html>
+                <head>
+                <style>
+                table, th, td {
+                    border: 1px solid black;
+                }
+                </style>
+                </head>
+                <body>
+                <table style="width:100%">
+                <tr>
+                    <th>Relevance</th>
+                    <th>Tweet</th>
+                    <th>Feed / Link</th>
+                    <th>Date</th>
+                </tr>
+                '''
+
+            # Body of Table
+            rel = self.assembled.sort_values(by='probability',
+                                             ascending=False)
+
+            for since_id, date, tweet, feed, clf, prob in rel.values:
+                if prob >= cut_off:
+                    url = 'https://twitter.com/{feed}/status/{since_id}'\
+                          .format(feed=feed, since_id=since_id)
+                    addon = '''
+                    <tr>
+                        <td>{:7.2f}%</td>
+                        <td>{}</td>
+                        <td><a href="{}">{}</a></td>
+                        <td>{}</td>
+                    </tr>
+                    '''.format(prob * 100, tweet, url, feed, date)
+                    htm += addon
+            htm += '</table>'
+
+            msg = MIMEText(htm, 'html', 'utf-8')
+            msg['Subject'] = Header(subject, 'UTF-8')
+            msg['From'] = sender
+
+            # Allow list of multiple addresses
+            if type(receiver) is list:
+                msg['To'] = ", ".join(receiver)
+            else:
+                msg['To'] = receiver
+
+            # open a file and save mail to it
+            with open(fname, 'w') as out:
+                gen = Generator(out)
+                gen.flatten(msg)
+
+            print('Report saved in {}'.format(osp.abspath(fname)))
+            return
+
     def text_process(self, mess):
         """
         Converts string into list of bag of words.
@@ -605,5 +696,6 @@ if __name__ == '__main__':
     # Commented out so that hyperparam.pkl does not always change on commit
     # tc.save_classifier()
     tc.predict()
-    tc.save_as_doc()
-    tc.save_as_txt()
+    #tc.save_as_doc()
+    #tc.save_as_txt()
+    tc.save_as_email('Test', 'bob@jakarta.id', ['tracy@notawoman.co.uk', 'Archibald@awoman.com'])
