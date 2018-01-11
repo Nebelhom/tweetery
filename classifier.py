@@ -690,12 +690,13 @@ class TweetClassifier(object):
 if __name__ == '__main__':
     clf = pd.read_excel('example_tweets.xlsx')
     df = pd.read_excel('Training Data.xlsx')
-    tc = TweetClassifier(clf, train=df, ignore_saved=True) #,
-                        # full_calibration=True)
+    tc = TweetClassifier(clf, train=df, ignore_saved=True,
+                         full_calibration=True)
     tc.print_accuracy()
     # Commented out so that hyperparam.pkl does not always change on commit
     # tc.save_classifier()
     tc.predict()
     #tc.save_as_doc()
     #tc.save_as_txt()
-    tc.save_as_email('Test', 'bob@jakarta.id', ['tracy@notawoman.co.uk', 'Archibald@awoman.com'])
+    tc.save_as_email('Test', 'bob@work.com', ['tracy@work.com',
+                                              'Archibald@work.com'])
