@@ -139,8 +139,8 @@ class TweetCollector(object):
         else:
             raise ZeroTweetsException()
 
-    def _download(self, feed, since_id, count=200, exclude_replies=True,
-                  include_rts=True):
+    def _download(self, feed, since_id, since_id, count=200,
+                  exclude_replies=True, include_rts=True):
         """
         Download up to count tweets or tweets from since_id onwards from feed
         using the tweepy api.
