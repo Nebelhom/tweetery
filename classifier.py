@@ -694,7 +694,7 @@ if __name__ == '__main__':
                          full_calibration=True)
     tc.print_accuracy()
     # Commented out so that hyperparam.pkl does not always change on commit
-    # tc.save_classifier()
+    tc.save_classifier()
     tc.predict()
     #tc.save_as_doc()
     #tc.save_as_txt()
