@@ -21,7 +21,7 @@ if __name__ == '__main__':
               extend_existing=False)
     tw.to_XLS(xlsname=env_args['tweetxls'], overwrite=True,
               extend_existing=True)
-    # Update the feedfile
+    #  Update the feedfile
     tw.update_feeds_csv(fname=env_args['feedfile'])
 
     # Get tweets to be classified
@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     # Save them as report
     tc.save_as_doc(fname=env_args['reportdoc'])
-    #tc.save_as_txt(fname=env_args['reporttxt'])
+    tc.save_as_txt(fname=env_args['reporttxt'])
     tc.save_as_email(subject='Twitter Report {}'.format(TODAY),
                      fname=env_args['reporteml'])
 
