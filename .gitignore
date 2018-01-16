@@ -1,5 +1,14 @@
-
 *.csv
 output.txt
 Nebelhom_tweets
 *.pyc
+
+reports/*.txt
+reports/*.doc
+reports/*.docx
+reports/*.eml
+tweets/*.txt
+tweets/*.xls
+tweets/*.xlsx
+!user_data/*.csv
+user_data/keys.csv

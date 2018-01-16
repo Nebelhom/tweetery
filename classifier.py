@@ -400,7 +400,7 @@ class TweetClassifier(object):
             return
 
         else:
-            with open(osp.abspath(fname), 'w') as f:
+            with open(osp.abspath(fname), 'w', encoding='utf-8') as f:
                 f.write('{:12s}\t{}\t{}\t{}\n'.format('Relevance', 'Text',
                                                       'URL', 'Date'))
                 f.write('{:12s}\t{}\t{}\t{}\n'.format('=========', '====',
